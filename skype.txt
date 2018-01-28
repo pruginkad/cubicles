@@ -1,0 +1,88 @@
+[25.01.2018 23:22:09] Danil Serov: for events from OnSessionChange session id will exist and as result user will be fullfiled. As I understand for your task it is not required to know who started service, normally it will start automatically, right?
+[25.01.2018 23:22:29] David Fried: right
+[25.01.2018 23:22:49] Danil Serov: And if user login or logout it should show correct user. The one who logged in - out
+[25.01.2018 23:23:03] David Fried: okay
+[25.01.2018 23:23:17] David Fried: I will use Enviroment.UserName
+[25.01.2018 23:23:45] David Fried: because it returns system and the other code also returns just system
+[25.01.2018 23:24:16] David Fried: just has some info "NT AUTHORITY\\SYSTEM"
+[25.01.2018 23:25:03] David Fried: the question is but if on change of session it will return the correct info
+[25.01.2018 23:26:25] Danil Serov: When you lock your computer (ctrl+alt+del) it also doesn't return correct user?
+[25.01.2018 23:26:56] David Fried: no
+[25.01.2018 23:27:05] David Fried: was null when I tested
+[25.01.2018 23:27:08] Danil Serov: when I lock station I see in debugger my username
+[25.01.2018 23:27:15] David Fried: let me try
+[25.01.2018 23:32:14] David Fried: yes it works :)
+[25.01.2018 23:33:57] Danil Serov: I have to leave, send questions to skype, I'll try to answer tomorrow also let me know what to add to the code
+[25.01.2018 23:34:13] David Fried: okay, should be good now
+[25.01.2018 23:53:53] David Fried: Aron told me now that he asked you to implement also that I should be able to invoke the service externaly
+[25.01.2018 23:54:03] David Fried: was this set up as well?
+[25.01.2018 23:55:37] Danil Serov: yes, the only thing, now it return short log, there several links you can try:
+[25.01.2018 23:57:01] Danil Serov: http://localhost:8000/DataCenter/GetLocalData
+[25.01.2018 23:57:17] Danil Serov: return local log
+[25.01.2018 23:57:44] Danil Serov: http://localhost:8000/DataCenter/Form
+[25.01.2018 23:58:12] Danil Serov: return web page which can be used to setup ip
+[0:00:28] Danil Serov: I used to think that this service will collect all the data and you will request them from it. However it looks like you collect all the data so actually I don't know what do you need to request from it or what to send to it. This possibility is implemented tell me if you want me to change the logic
+[0:02:31] David Fried: [25 января 2018 г. 23:58] Danil Serov: 
+
+<<< return web page which can be used to setup ipwhat is this exactly
+[0:32:50] cubicles97: Hi Danil 
+[0:33:08] cubicles97: We would like to be able to use your service is 2 ways
+[0:33:25] cubicles97: 1. is service keeps on pushing to Server
+[0:33:41] cubicles97: 2. server calls Service to ask from event info
+[0:34:06] Danil Serov: Hi Aron
+[0:34:42] Danil Serov: yes, there is a way to get last data from service using :
+[25 января 2018 г. 23:57] Danil Serov: 
+
+<<< http://localhost:8000/DataCenter/GetLocalData
+[0:34:53] Danil Serov: David, about form
+[0:35:21] Danil Serov: when you request using browser link:
+[25 января 2018 г. 23:57] Danil Serov: 
+
+<<< http://localhost:8000/DataCenter/Form
+[0:35:46] Danil Serov: it will return form with editbox and submit button
+[0:36:04] Danil Serov: if you press this button it will send data to service
+[0:36:38] Danil Serov: another way to send such data is to get by browser following link:
+[0:37:45] Danil Serov: http://localhost:8000/DataCenter/SetDataCenter?newIp=yourremotehost
+[0:38:07] cubicles97: Danil, no bottons
+[0:38:13] cubicles97: all would be done by server API
+[0:38:30] Danil Serov: So basically you don't need it, I created it because I was thinknig about remote configuring
+[0:38:53] Danil Serov: yes I understand
+[0:40:48] cubicles97: Maybe we can have then when service starts, it would check what mode it is by calling the API, 
+[0:41:48] Danil Serov: yes , describe how it should look like
+[0:42:13] Danil Serov: AService1 call your api and ask about mode?
+[0:42:50] cubicles97: Lets agree on this tommrow, because i would like david to be here when we discuss 
+[0:42:56] cubicles97: david left for the day allready
+[0:43:25] Danil Serov: ok
+[19:22:55] cubicles97: Hi Denil
+[19:23:00] cubicles97: david is here now
+[19:23:10] cubicles97: Are u around?
+[19:23:36] cubicles97: we are preparing now for u a doc with clear points
+[19:35:32] Danil Serov: HI
+[19:35:39] Danil Serov: I'm here
+[19:49:31] cubicles97: David, pls share sheet
+[19:49:35] cubicles97: so we can discuss
+[19:51:18] David Fried: https://docs.google.com/document/d/1XbXSBmBDklrgOVf9XnSqp2xTv_GOA9PK-7RJrHF7ZdY/edit?usp=sharing
+[19:51:43] David Fried: please look at this and lets discuss it when done
+[20:00:57] Danil Serov: what is inside K:\API_Info.txt?
+[20:02:18] David Fried: that's if for some reason we decide to change the API location that new location location will be written in that file
+[20:04:03 | Изменены 20:04:14] Danil Serov: so normally there will be a string like http://myhost:52323/api
+[20:04:20] David Fried: yes
+[20:07:21] Danil Serov: event queue will be in memorY so if computer is restarted it is empty or you want it to be dumped in a file? So after service restart it has some history?
+[20:08:45] David Fried: cant the service query the previous events?
+[20:09:13] David Fried: does it have to be collected in real time so it can be saved?
+[20:12:30] Danil Serov: I don't know at the moment may be i can be requested from windows log. If it is possible i will get it from here if not - save to file
+[20:12:55] David Fried: okay
+[20:13:06] David Fried: please check on that
+[20:17:19] Danil Serov: I checked event log it looks like event log doesn't contain username it is system or N/A
+[20:18:55] Danil Serov: Unless serice itself will write it...
+[20:19:27 | Изменены 20:19:28] David Fried: can the service control the windows event log?
+[20:19:54] Danil Serov: I defenitely can write to it
+[20:20:09 | Изменены 20:20:17] Danil Serov: I guess I can read it also
+[20:20:33] David Fried: so guess this is the best option
+[20:37:13] Danil Serov: I'll leave for ~60 minutes
+[20:37:24] David Fried: okay
+[20:37:28] David Fried: will leave soon
+[20:37:31] Danil Serov: Looks like task is clear
+[20:37:38] David Fried: 'so we can be in touch sunday
+[20:37:42] David Fried: no problem
+[20:37:44] Danil Serov: ok
