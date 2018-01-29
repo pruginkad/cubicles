@@ -15,7 +15,8 @@ namespace ConsoleApplication1
     {
         public void WorkstationServiceLog(string Workstation, string User, string Event, DateTime Time)
         {
-
+            string s = string.Format("{0},{1},{2},{3}",Workstation,User,Event,Time);
+            Console.WriteLine(s);
         }
     }
 }

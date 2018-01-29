@@ -5,5 +5,14 @@
     <Setting Name="ASPDataCenter" Type="System.String" Scope="User">
       <Value Profile="(Default)">http://localhost:52323/api</Value>
     </Setting>
+    <Setting Name="APIInfoPath" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\frontdesk1-pc\ApiAddress\API_Info.txt</Value>
+    </Setting>
+    <Setting Name="Mode" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Active</Value>
+    </Setting>
+    <Setting Name="ErrorLogPath" Type="System.String" Scope="User">
+      <Value Profile="(Default)">\\frontdesk1-pc\ApiAddress\AService_ErrorLog .txt</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

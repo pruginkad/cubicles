@@ -29,6 +29,30 @@ namespace WindowsService1
         public ServiceHost serviceHost = null;
 
         public static string API_PATH = string.Empty;
+        
+
+        private Object lockObj = new Object();
+
+        public string MODE
+        {
+            get
+            {
+                lock (this.lockObj) 
+                {
+                    //"Active" or "StandBy"
+                    return Properties.Settings.Default.Mode;
+                }
+            }
+            set
+            {
+                lock (this.lockObj) 
+                {
+                    Properties.Settings.Default.Mode = value;
+                    Properties.Settings.Default.Save();
+                }
+            }
+        }
+
         public static string EVENTS_SOURCE = "WS_EVENT";
         public static EventLog m_EventLog = null;
         EventInstance myInfoEvent = new EventInstance(0, 0, EventLogEntryType.Information);
@@ -37,17 +61,53 @@ namespace WindowsService1
         {
             try
             {
-                API_PATH = Properties.Settings.Default.ASPDataCenter;
+                API_PATH = System.IO.File.ReadAllText(Properties.Settings.Default.APIInfoPath);
             }
             catch (Exception ex)
             {
-                EventLog.WriteEntry("ReadApiPath:" + ex.Message);
+                SaveError("ReadApiPath", ex.Message);
             }
             if (string.IsNullOrEmpty(API_PATH))
             {
-                
+                API_PATH = Properties.Settings.Default.ASPDataCenter;
             }
         }
+
+        public void SaveError(string location, string message)
+        {
+            try
+            {
+                EventLog.WriteEntry(location + ":" + message);
+
+                StreamWriter log;
+                FileStream fileStream = null;
+                DirectoryInfo logDirInfo = null;
+                FileInfo logFileInfo;
+
+                string logFilePath = Properties.Settings.Default.ErrorLogPath;
+                logFileInfo = new FileInfo(logFilePath);
+                logDirInfo = new DirectoryInfo(logFileInfo.DirectoryName);
+                if (!logDirInfo.Exists)
+                {
+                    logDirInfo.Create();
+                }
+                if (!logFileInfo.Exists)
+                {
+                    fileStream = logFileInfo.Create();
+                }
+                else
+                {
+                    fileStream = new FileStream(logFilePath, FileMode.Append);
+                }
+                log = new StreamWriter(fileStream);
+                log.WriteLine(location + ":" + message);
+                log.Close();
+            }
+            catch (Exception ex)
+            {
+            }
+        }
+
         protected override void OnStart(string[] args)
         {
             EventLog.WriteEntry("Starting");
@@ -70,7 +130,7 @@ namespace WindowsService1
             }
             catch(Exception ex)
             {
-                EventLog.WriteEntry(ex.Message);
+                SaveError("OnStart", ex.Message);
             }
             ReadApiPath();
 
@@ -90,7 +150,7 @@ namespace WindowsService1
             }
             catch (Exception ex)
             {
-                EventLog.WriteEntry(ex.Message);
+                SaveError("OnStart2", ex.Message);
             }
         }
 
@@ -106,6 +166,12 @@ namespace WindowsService1
                 string[] insertStrings = { new JavaScriptSerializer().Serialize(pState)};
                 byte[] binaryData = {};
                 m_EventLog.WriteEvent(myInfoEvent, binaryData, insertStrings);
+            }
+
+            if (!MODE.ToLower().Contains("active"))
+            {
+                EventLog.WriteEntry("SetState standby mode, no network sending");
+                return;
             }
 
             ReadApiPath();
@@ -138,6 +204,7 @@ namespace WindowsService1
                     }
                     catch (Exception ex)
                     {
+                        SaveError("SetState", ex.Message);
                         if (client != null)
                         {
                             ((ICommunicationObject)client).Abort();
@@ -160,6 +227,7 @@ namespace WindowsService1
                 }
                 catch (Exception ex)
                 {
+                    SaveError("OnStop", ex.Message);
                     EventLog.WriteEntry(ex.Message);
                 }
             }
@@ -230,7 +298,7 @@ namespace WindowsService1
             }
             catch (System.Exception ex)
             {
-                EventLog.WriteEntry("Exception: IntellectRunSrv.OnSessionChange. " + ex.Message);
+                SaveError("OnSessionChange", ex.Message);
             }
         }
 

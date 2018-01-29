@@ -26,6 +26,11 @@ namespace WindowsService1
             return AService1.API_PATH;
         }
 
+        public void SetMode(string mode)
+        {
+            GetService().MODE = mode;
+        }
+
         public string SetApiPath(string apiPath, string redirect)
         {
             try

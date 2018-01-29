@@ -21,6 +21,10 @@ namespace WindowsService1
 
         [OperationContract]
         [WebGet]
+        void SetMode(string mode);
+
+        [OperationContract]
+        [WebGet]
         [ServiceKnownType(typeof(ServiceState))]
         List<ServiceState> GetEvents(int pastNumberOfMinutes, string username, string eventname);
     }

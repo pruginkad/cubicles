@@ -34,5 +34,41 @@ namespace WindowsService1.Properties {
                 this["ASPDataCenter"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\frontdesk1-pc\\ApiAddress\\API_Info.txt")]
+        public string APIInfoPath {
+            get {
+                return ((string)(this["APIInfoPath"]));
+            }
+            set {
+                this["APIInfoPath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Active")]
+        public string Mode {
+            get {
+                return ((string)(this["Mode"]));
+            }
+            set {
+                this["Mode"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\frontdesk1-pc\\ApiAddress\\AService_ErrorLog .txt")]
+        public string ErrorLogPath {
+            get {
+                return ((string)(this["ErrorLogPath"]));
+            }
+            set {
+                this["ErrorLogPath"] = value;
+            }
+        }
     }
 }
