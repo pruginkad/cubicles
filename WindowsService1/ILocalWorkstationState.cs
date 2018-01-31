@@ -21,7 +21,7 @@ namespace WindowsService1
 
         [OperationContract]
         [WebGet]
-        void SetMode(string mode);
+        string SetMode(string mode);
 
         [OperationContract]
         [WebGet]

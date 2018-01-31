@@ -26,9 +26,23 @@ namespace WindowsService1
             return AService1.API_PATH;
         }
 
-        public void SetMode(string mode)
+        public string SetMode(string mode)
         {
-            GetService().MODE = mode;
+            if (string.IsNullOrEmpty(mode) ||
+                !mode.ToLower().Contains("active") ||
+                mode.ToLower().Contains("standby"))
+            {
+                return "Wrong mode";
+            }
+            try
+            {
+                GetService().MODE = mode;
+            }
+            catch (Exception ex)
+            {
+                return "Error:" + ex.Message;
+            }
+            return "Ok";
         }
 
         public string SetApiPath(string apiPath, string redirect)
