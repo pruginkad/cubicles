@@ -35,7 +35,7 @@
             this.CanHandleSessionChangeEvent = true;
             this.CanPauseAndContinue = true;
             this.CanShutdown = true;
-            this.ServiceName = "AService1";
+            this.ServiceName = "EventService";
 
         }
 
