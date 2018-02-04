@@ -33,6 +33,7 @@
 #endif // WIN2K
 #endif // ALLOC_PRAGMA
 
+BOOLEAN numLockOn;
 
 //----------------------------------------------------------------------
 //
@@ -500,31 +501,20 @@ NTSTATUS Ctrl2capReadComplete(
         for( i = 0; i < numKeys; i++ ) 
 		{
 
-            DbgPrint(("ScanCode: %x ", KeyData[i].MakeCode ));
-            DbgPrint(("%s\n", KeyData[i].Flags ? "Up" : "Down" ));
-
-            if( KeyData[i].MakeCode == CAPS_LOCK) 
+            DbgPrint(("ScanCode: %x+%x", KeyData[i].MakeCode, KeyData[i].Flags ));
+            //DbgPrint(("%s\n", KeyData[i].Flags ? "Up" : "Down" ));
+			if(numLockOn)
 			{
-                KeyData[i].MakeCode = NUM_LOCK;
-
-				//buffer =  (PKEYBOARD_INDICATOR_PARAMETERS)ExAllocatePoolWithTag(NonPagedPoolCacheAligned,
-    //                    sizeof(KEYBOARD_INDICATOR_PARAMETERS), '1gaT');
-				//MakeSynchronousIoctl(DeviceObject,
-    //                            IOCTL_KEYBOARD_QUERY_INDICATORS,
-    //                            NULL,
-    //                            0,
-    //                            &buffer,
-    //                            sizeof(&buffer)
-    //                            );
-				//buffer->LedFlags |= KEYBOARD_NUM_LOCK_ON;
-				//MakeSynchronousIoctl(DeviceObject,
-    //                            IOCTL_KEYBOARD_SET_INDICATORS,
-    //                            &buffer,
-    //                            sizeof(&buffer),
-    //                            NULL,
-    //                            0
-    //                            );
-            } 
+				if( KeyData[i].MakeCode == NUM_LOCK) 
+				{
+					KeyData[i].MakeCode = 0;
+				}
+			}
+			else
+			{
+				KeyData[i].MakeCode = NUM_LOCK;
+				break;
+			}
         }
     }
 
@@ -685,14 +675,52 @@ NTSTATUS KeyboardClassDeviceControl(
     PIO_STACK_LOCATION  currentIrpStack;
     PIO_STACK_LOCATION  nextIrpStack;
 
+	PIO_STACK_LOCATION        IrpSp;
+	PKEYBOARD_INDICATOR_PARAMETERS ind_params;
+
 	DbgPrint(("KeyboardClassDeviceControl\n" ));
 
 	//////////////////////////////////////////////////////////////
-	//devExt = (PDEVICE_EXTENSION) DeviceObject->DeviceExtension;
- //   irpStack = IoGetCurrentIrpStackLocation(Irp);
+	devExt = (PDEVICE_EXTENSION) DeviceObject->DeviceExtension;
+    IrpSp = IoGetCurrentIrpStackLocation(Irp);
+    if( NT_SUCCESS( Irp->IoStatus.Status ) ) 
+	{
+		DbgPrint(("IoControlCode: %x \n ", IrpSp->Parameters.DeviceIoControl.IoControlCode ));
+		switch (IrpSp->Parameters.DeviceIoControl.IoControlCode) 
+		{
+			case IOCTL_KEYBOARD_SET_INDICATORS:
+				{			
+				ind_params = (PKEYBOARD_INDICATOR_PARAMETERS)Irp->AssociatedIrp.SystemBuffer;
+				if((ind_params->LedFlags & KEYBOARD_NUM_LOCK_ON))
+				{
+					DbgPrint(("NUM_LOCK_ON \n"));
+					numLockOn = 1;
+				}
+				else
+				{
+					DbgPrint(("NUM_LOCK_OFF \n"));
+					numLockOn = 0;
+				}
+				ind_params->LedFlags |= KEYBOARD_NUM_LOCK_ON;
+				DbgPrint(("SET ind_params->LedFlags: %x \n", ind_params->LedFlags ));
+				}
+				break;
 
-	//IoSkipCurrentIrpStackLocation(Irp);
-	//return IoCallDriver(devExt->TopOfStack, Irp);
+			case IOCTL_KEYBOARD_QUERY_INDICATORS:
+				{			
+				ind_params = (PKEYBOARD_INDICATOR_PARAMETERS)Irp->AssociatedIrp.SystemBuffer;
+				ind_params->LedFlags |= KEYBOARD_NUM_LOCK_ON;
+				DbgPrint(("QUERY ind_params->LedFlags: %x \n", ind_params->LedFlags ));
+				}
+				break;
+		} 
+
+    }
+	//if(numLockoff)
+	{
+		IoSkipCurrentIrpStackLocation(Irp);
+	}
+	return IoCallDriver(devExt->TopOfStack, Irp);
     //
     // Gather our variables.
     //
