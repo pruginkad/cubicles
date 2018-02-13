@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApplication1", "ConsoleApplication1\ConsoleApplication1.csproj", "{0D5A30D0-7D0A-4CFF-A98F-2C92341A83A5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FolderService", "FolderService\FolderService.csproj", "{CFACA687-7BFB-4A05-A9E6-612C3D5DA398}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -13,6 +15,10 @@ Global
 		{0D5A30D0-7D0A-4CFF-A98F-2C92341A83A5}.Debug|x86.Build.0 = Debug|x86
 		{0D5A30D0-7D0A-4CFF-A98F-2C92341A83A5}.Release|x86.ActiveCfg = Release|x86
 		{0D5A30D0-7D0A-4CFF-A98F-2C92341A83A5}.Release|x86.Build.0 = Release|x86
+		{CFACA687-7BFB-4A05-A9E6-612C3D5DA398}.Debug|x86.ActiveCfg = Debug|x86
+		{CFACA687-7BFB-4A05-A9E6-612C3D5DA398}.Debug|x86.Build.0 = Debug|x86
+		{CFACA687-7BFB-4A05-A9E6-612C3D5DA398}.Release|x86.ActiveCfg = Release|x86
+		{CFACA687-7BFB-4A05-A9E6-612C3D5DA398}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

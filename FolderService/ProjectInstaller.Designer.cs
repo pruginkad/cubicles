@@ -34,13 +34,15 @@ namespace FolderService
             // 
             // serviceProcessInstaller1
             // 
-            
+            this.serviceProcessInstaller1.Password = null;
+            this.serviceProcessInstaller1.Username = null;
             // 
             // serviceInstaller1
             // 
             this.serviceInstaller1.Description = "FolderService";
             this.serviceInstaller1.DisplayName = "FolderService";
             this.serviceInstaller1.ServiceName = "FolderService";
+            this.serviceInstaller1.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
             // 
             // ProjectInstaller
             // 

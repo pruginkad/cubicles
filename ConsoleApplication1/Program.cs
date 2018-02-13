@@ -29,6 +29,7 @@ namespace ConsoleApplication1
         {
             string userName = System.Environment.UserName;
 
+            string test = Environment.GetEnvironmentVariable("ALLUSERSPROFILE");
             //CreateFolder("Galia");
             CreateFolder("Danil");
             //CreateFolder("Toshiba");
