@@ -79,7 +79,7 @@ namespace FolderService
                             FolderCreation.AdminPassword = Properties.Settings.Default.AdminPassword;
                             FolderCreation.ServerName = Properties.Settings.Default.ServerName;
                             FolderCreation.SharedFolder = Properties.Settings.Default.SharedFolder;
-                            FolderCreation.CreateFolder(username);
+                            FolderCreation.CreateFolder(username, "C");
                             break;
                         }
 

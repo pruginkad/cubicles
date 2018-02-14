@@ -28,15 +28,27 @@ namespace ConsoleApplication1
 
         static void Main(string[] args)
         {
-            string username = System.Environment.UserName;
-            
-            FolderCreation.AdminUser = Properties.Settings.Default.AdminUser;
-            FolderCreation.AdminPassword = Properties.Settings.Default.AdminPassword;
-            FolderCreation.ServerName = Properties.Settings.Default.ServerName;
-            FolderCreation.SharedFolder = Properties.Settings.Default.SharedFolder;
+            try
+            {
+                string username = System.Environment.UserName;
 
-            FolderCreation.CreateFolder(username);
-            
+                FolderCreation.AdminUser = Properties.Settings.Default.AdminUser;
+                FolderCreation.AdminPassword = Properties.Settings.Default.AdminPassword;
+                FolderCreation.ServerName = Properties.Settings.Default.ServerName;
+                FolderCreation.SharedFolder = Properties.Settings.Default.SharedFolder;
+
+
+                ImpersonationHelper.Impersonate(System.Environment.MachineName, FolderCreation.AdminUser, FolderCreation.AdminPassword, delegate
+                {
+                    FolderCreation.CreateRoot("C");
+                    FolderCreation.CreateFolder(username, "C");
+                });
+                
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
 
             Console.ReadLine();
         }

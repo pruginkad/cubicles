@@ -29,60 +29,38 @@ namespace FolderService
             get;set;
         }
         
-        
-        private static string GetSid(string user_to_find, string machine, string Username, string Password)
-        {
-            try
-            {
-                ConnectionOptions connection = new ConnectionOptions();
-                connection.Username = Username;
-                connection.Password = Password;
-                connection.Authority = "ntlmdomain:";
-
-                ManagementScope scope = new ManagementScope(
-                    "\\\\" + machine + "\\root\\CIMV2", connection);
-                scope.Connect();
-
-                string s_query = string.Format("SELECT * FROM Win32_UserAccount where Name='{0}'", user_to_find);
-                ObjectQuery query = new ObjectQuery(s_query);
-
-                ManagementObjectSearcher searcher =
-                    new ManagementObjectSearcher(scope, query);
-
-                foreach (ManagementObject queryObj in searcher.Get())
-                {
-                    Console.WriteLine("-----------------------------------");
-                    Console.WriteLine("Win32_UserAccount instance");
-                    Console.WriteLine("-----------------------------------");
-                    Console.WriteLine("Name: {0}", queryObj["Name"]);
-                    Console.WriteLine("SID: {0}", queryObj["SID"]);
-                    return queryObj["SID"].ToString();
-                }
-
-            }
-            catch (ManagementException err)
-            {
-                Console.WriteLine("An error occurred while querying for WMI data: " + err.Message);
-            }
-            catch (System.UnauthorizedAccessException unauthorizedErr)
-            {
-                Console.WriteLine("Connection error (user name or password might be incorrect): " + unauthorizedErr.Message);
-            }
-            return string.Empty;
-        }
-
-        
+      
         static string common_folder ()
         {
             return "\\\\" + ServerName
                 + "\\" + SharedFolder;
         }
 
-        public static void CreateFolder(string accountName)
+        public static void CreateRoot(string DiskName)
+        {
+            string folderName = string.Format(@"\\{0}\{1}$\{2}",
+                FolderCreation.ServerName, DiskName, FolderCreation.SharedFolder);
+            if (!Directory.Exists(folderName))
+            {
+                Directory.CreateDirectory(folderName);
+            }
+
+
+            AddDirectorySecurity(AdminUser, folderName,
+                    FileSystemRights.FullControl, AccessControlType.Allow);
+
+            ShareFolderPermission(DiskName + @":\" + SharedFolder,
+                SharedFolder, 
+                FolderCreation.ServerName, FolderCreation.AdminUser, FolderCreation.AdminPassword);
+        }
+
+        public static void CreateFolder(string accountName, string DiskName)
         {
             try
             {
-                string folderName = common_folder() + "\\" + accountName;
+                string folderName = string.Format(@"\\{0}\{1}$\{2}\{3}",
+                FolderCreation.ServerName, DiskName, FolderCreation.SharedFolder, accountName);
+
 
                 if (Directory.Exists(folderName))
                 {
@@ -140,6 +118,84 @@ namespace FolderService
 
             // Set the new access settings.
             dInfo.SetAccessControl(dSecurity);
+        }
+
+        private static string GetSid(string user_to_find, string machine, string Username, string Password)
+        {
+            try
+            {
+                ConnectionOptions connection = new ConnectionOptions();
+                connection.Username = Username;
+                connection.Password = Password;
+                connection.Authority = "ntlmdomain:";
+
+                ManagementScope scope = new ManagementScope(
+                    "\\\\" + machine + "\\root\\CIMV2", connection);
+                scope.Connect();
+
+                string s_query = string.Format("SELECT * FROM Win32_UserAccount where Name='{0}'", user_to_find);
+                ObjectQuery query = new ObjectQuery(s_query);
+
+                ManagementObjectSearcher searcher =
+                    new ManagementObjectSearcher(scope, query);
+
+                foreach (ManagementObject queryObj in searcher.Get())
+                {
+                    Console.WriteLine("Found Win32_UserAccount instance");
+                    Console.WriteLine("Name: {0}", queryObj["Name"]);
+                    Console.WriteLine("SID: {0}", queryObj["SID"]);
+                    return queryObj["SID"].ToString();
+                }
+
+            }
+            catch (ManagementException err)
+            {
+                Console.WriteLine("An error occurred while querying for WMI data: " + err.Message);
+            }
+            catch (System.UnauthorizedAccessException unauthorizedErr)
+            {
+                Console.WriteLine("Connection error (user name or password might be incorrect): " + unauthorizedErr.Message);
+            }
+            return string.Empty;
+        }
+
+        static public void ShareFolderPermission(string FolderPath, string ShareName,
+                                string machine, string Username, string Password)
+        {
+            try
+            {
+                ConnectionOptions connection = new ConnectionOptions();
+                connection.Username = Username;
+                connection.Password = Password;
+                connection.Authority = "ntlmdomain:";
+
+                ManagementScope scope = new ManagementScope(
+                    "\\\\" + machine + "\\root\\CIMV2", connection);
+                scope.Connect();
+
+                // Calling Win32_Share class to create a shared folder
+                
+                ManagementClass managementClass = new ManagementClass(scope, new ManagementPath("Win32_Share"), new ObjectGetOptions());
+                // Get the parameter for the Create Method for the folder
+                ManagementBaseObject inParams = managementClass.GetMethodParameters("Create");
+                ManagementBaseObject outParams;
+                // Assigning the values to the parameters
+                inParams["Description"] = "Root Shared";
+                inParams["Name"] = ShareName;
+                inParams["Path"] = FolderPath;
+                inParams["Type"] = 0x0;
+                // Finally Invoke the Create Method to do the process
+                outParams = managementClass.InvokeMethod("Create", inParams, null);
+                // Validation done here to check sharing is done or not
+                if ((uint)(outParams.Properties["ReturnValue"].Value) != 0)
+                {
+                    Console.WriteLine("Folder might be already in share or unable to share the directory");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
     }
 }
