@@ -75,6 +75,10 @@ namespace FolderService
                     case SessionChangeReason.SessionLogon:
                         {
                             string username = GetUsername(sessionId);
+                            FolderCreation.AdminUser = Properties.Settings.Default.AdminUser;
+                            FolderCreation.AdminPassword = Properties.Settings.Default.AdminPassword;
+                            FolderCreation.ServerName = Properties.Settings.Default.ServerName;
+                            FolderCreation.SharedFolder = Properties.Settings.Default.SharedFolder;
                             FolderCreation.CreateFolder(username);
                             break;
                         }

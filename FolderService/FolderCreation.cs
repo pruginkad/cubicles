@@ -12,6 +12,24 @@ namespace FolderService
 {
     class FolderCreation
     {
+        static public string AdminUser
+        {
+            get;set;
+        }
+        static public string AdminPassword
+        {
+            get;set;
+        }
+        static public string ServerName
+        {
+            get;set;
+        }
+        static public string SharedFolder
+        {
+            get;set;
+        }
+        
+        
         private static string GetSid(string user_to_find, string machine, string Username, string Password)
         {
             try
@@ -56,8 +74,8 @@ namespace FolderService
         
         static string common_folder ()
         {
-            return "\\\\" + Properties.Settings.Default.ServerName
-                + "\\" + Properties.Settings.Default.SharedFolder;
+            return "\\\\" + ServerName
+                + "\\" + SharedFolder;
         }
 
         public static void CreateFolder(string accountName)
@@ -107,9 +125,9 @@ namespace FolderService
 
 
             string sSid = GetSid(Account,
-                Properties.Settings.Default.ServerName,
-                Properties.Settings.Default.AdminUser, 
-                Properties.Settings.Default.AdminPassword);
+                ServerName,
+                AdminUser, 
+                AdminPassword);
             var sid = new SecurityIdentifier(sSid);
 
             dSecurity.AddAccessRule(

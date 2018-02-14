@@ -19,6 +19,7 @@ using Microsoft.Win32.SafeHandles;
 using System.Security;
 using System.IO.Pipes;
 using System.ComponentModel;
+using FolderService;
 
 namespace ConsoleApplication1
 {
@@ -27,25 +28,16 @@ namespace ConsoleApplication1
 
         static void Main(string[] args)
         {
-            string userName = System.Environment.UserName;
+            string username = System.Environment.UserName;
+            
+            FolderCreation.AdminUser = Properties.Settings.Default.AdminUser;
+            FolderCreation.AdminPassword = Properties.Settings.Default.AdminPassword;
+            FolderCreation.ServerName = Properties.Settings.Default.ServerName;
+            FolderCreation.SharedFolder = Properties.Settings.Default.SharedFolder;
 
-            string test = Environment.GetEnvironmentVariable("ALLUSERSPROFILE");
-            //CreateFolder("Galia");
-            CreateFolder("Danil");
-            //CreateFolder("Toshiba");
-            //return;
-            ServiceHost serviceHost = null;
-            try
-            {
-                serviceHost = new ServiceHost(typeof(WorkstationServiceLogImp));
+            FolderCreation.CreateFolder(username);
+            
 
-                serviceHost.Open();
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
             Console.ReadLine();
         }
 
