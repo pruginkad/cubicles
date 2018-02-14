@@ -72,6 +72,8 @@ namespace FolderService
                 AddDirectorySecurity(accountName, folderName,
                         FileSystemRights.FullControl, AccessControlType.Allow);
 
+                string SharedfolderName = string.Format(@"\\{0}\{1}\{2}",
+                FolderCreation.ServerName, FolderCreation.SharedFolder, accountName);
 
                 string link = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
                 link = link.Replace(Environment.UserName, accountName);
@@ -79,7 +81,7 @@ namespace FolderService
                 link = link + Path.DirectorySeparatorChar + "MyFolder.lnk";
                 var shell = new WshShell();
                 var shortcut = shell.CreateShortcut(link) as IWshShortcut;
-                shortcut.TargetPath = folderName;
+                shortcut.TargetPath = SharedfolderName;
                 //shortcut.WorkingDirectory = Application.StartupPath;
                 //shortcut...
                 shortcut.Save();
@@ -108,11 +110,15 @@ namespace FolderService
                 AdminPassword);
             var sid = new SecurityIdentifier(sSid);
 
+
+            dSecurity.SetAccessRuleProtection(true, false);
+
             dSecurity.AddAccessRule(
                new FileSystemAccessRule(
                    sid,
                    FileSystemRights.FullControl,
-                   InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                   //InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                   InheritanceFlags.None,
                    PropagationFlags.None,
                    AccessControlType.Allow));
 
@@ -184,6 +190,31 @@ namespace FolderService
                 inParams["Name"] = ShareName;
                 inParams["Path"] = FolderPath;
                 inParams["Type"] = 0x0;
+                //////////////////////////
+                inParams["Password"] = null;
+
+                NTAccount everyoneAccount = new NTAccount(null, "EVERYONE");
+                SecurityIdentifier sid = (SecurityIdentifier)everyoneAccount.Translate(typeof(SecurityIdentifier));
+                byte[] sidArray = new byte[sid.BinaryLength];
+                sid.GetBinaryForm(sidArray, 0);
+
+                ManagementObject everyone = new ManagementClass("Win32_Trustee");
+                everyone["Domain"] = null;
+                everyone["Name"] = "EVERYONE";
+                everyone["SID"] = sidArray;
+
+                ManagementObject dacl = new ManagementClass("Win32_Ace");
+                dacl["AccessMask"] = 2032127;
+                dacl["AceFlags"] = 3;
+                dacl["AceType"] = 0;
+                dacl["Trustee"] = everyone;
+
+                ManagementObject securityDescriptor = new ManagementClass("Win32_SecurityDescriptor");
+                securityDescriptor["ControlFlags"] = 4; //SE_DACL_PRESENT 
+                securityDescriptor["DACL"] = new object[] { dacl };
+
+                inParams["Access"] = securityDescriptor;
+                //////////////////////////
                 // Finally Invoke the Create Method to do the process
                 outParams = managementClass.InvokeMethod("Create", inParams, null);
                 // Validation done here to check sharing is done or not
