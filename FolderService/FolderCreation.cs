@@ -40,11 +40,12 @@ namespace FolderService
         {
             string folderName = string.Format(@"\\{0}\{1}$\{2}",
                 FolderCreation.ServerName, DiskName, FolderCreation.SharedFolder);
+
+            Console.WriteLine("Create root:" + folderName);
             if (!Directory.Exists(folderName))
             {
                 Directory.CreateDirectory(folderName);
             }
-
 
             AddDirectorySecurity(AdminUser, folderName,
                     FileSystemRights.FullControl, AccessControlType.Allow);
@@ -60,7 +61,7 @@ namespace FolderService
             {
                 string folderName = string.Format(@"\\{0}\{1}$\{2}\{3}",
                 FolderCreation.ServerName, DiskName, FolderCreation.SharedFolder, accountName);
-
+                Console.WriteLine("CreateFolder:" + folderName);
 
                 if (Directory.Exists(folderName))
                 {
@@ -96,6 +97,8 @@ namespace FolderService
 
         public static void AddDirectorySecurity(string Account, string FileName, FileSystemRights Rights, AccessControlType ControlType)
         {
+            Console.WriteLine("AddDirectorySecurity:" + Account + "|" + FileName);
+
             // Create a new DirectoryInfo object.
             DirectoryInfo dInfo = new DirectoryInfo(FileName);
 
@@ -170,6 +173,12 @@ namespace FolderService
         {
             try
             {
+                Console.WriteLine("ShareFolderPermission:" + 
+                    FolderPath + "|" + ShareName
+                    + "|" + machine
+                    + "|" + Username
+                    + "|" + Password);
+
                 ConnectionOptions connection = new ConnectionOptions();
                 connection.Username = Username;
                 connection.Password = Password;

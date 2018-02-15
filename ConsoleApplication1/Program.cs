@@ -37,9 +37,12 @@ namespace ConsoleApplication1
                 FolderCreation.ServerName = Properties.Settings.Default.ServerName;
                 FolderCreation.SharedFolder = Properties.Settings.Default.SharedFolder;
 
+                Console.WriteLine("Start Impersonate With:" + System.Environment.MachineName +"|"+
+                    FolderCreation.AdminUser + "|" + FolderCreation.AdminPassword);
 
                 ImpersonationHelper.Impersonate(System.Environment.MachineName, FolderCreation.AdminUser, FolderCreation.AdminPassword, delegate
                 {
+                    Console.WriteLine("Impersonation OK");
                     FolderCreation.CreateRoot("C");
                     FolderCreation.CreateFolder(username, "C");
                 });
@@ -52,114 +55,5 @@ namespace ConsoleApplication1
 
             Console.ReadLine();
         }
-
-        private static string GetSid(string user_to_find, string machine, string Username, string Password)
-        {
-            try
-            {
-                ConnectionOptions connection = new ConnectionOptions();
-                connection.Username = Username;
-                connection.Password = Password;
-                connection.Authority = "ntlmdomain:";
-
-                ManagementScope scope = new ManagementScope(
-                    "\\\\" + machine + "\\root\\CIMV2", connection);
-                scope.Connect();
-
-                string s_query = string.Format("SELECT * FROM Win32_UserAccount where Name='{0}'", user_to_find);
-                ObjectQuery query = new ObjectQuery(s_query);
-
-                ManagementObjectSearcher searcher =
-                    new ManagementObjectSearcher(scope, query);
-
-                foreach (ManagementObject queryObj in searcher.Get())
-                {
-                    Console.WriteLine("-----------------------------------");
-                    Console.WriteLine("Win32_UserAccount instance");
-                    Console.WriteLine("-----------------------------------");
-                    Console.WriteLine("Name: {0}", queryObj["Name"]);
-                    Console.WriteLine("SID: {0}", queryObj["SID"]);
-                    return queryObj["SID"].ToString();
-                }
-                
-            }
-            catch (ManagementException err)
-            {
-                Console.WriteLine("An error occurred while querying for WMI data: " + err.Message);
-            }
-            catch (System.UnauthorizedAccessException unauthorizedErr)
-            {
-                Console.WriteLine("Connection error (user name or password might be incorrect): " + unauthorizedErr.Message);
-            }
-            return string.Empty;
-        }
-
-        static string server_name = "WIN7-VIRT";
-        static string common_folder = "\\\\" + server_name + "\\Test";
-
-        public static void CreateFolder(string accountName)
-        {
-            string folderName;
-            try
-            {
-                folderName = common_folder + "\\" + accountName;
-
-                if (Directory.Exists(folderName))
-                {
-                    Directory.Delete(folderName);
-                }
-                
-                Directory.CreateDirectory(folderName);
-
-                AddDirectorySecurity(accountName, folderName,
-                        FileSystemRights.FullControl, AccessControlType.Allow);
-
-                string link = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
-                + Path.DirectorySeparatorChar + "MyFolder.lnk";
-                var shell = new WshShell();
-                var shortcut = shell.CreateShortcut(link) as IWshShortcut;
-                shortcut.TargetPath = folderName;
-                //shortcut.WorkingDirectory = Application.StartupPath;
-                //shortcut...
-                shortcut.Save();
-
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-        }
-
-        public static void AddDirectorySecurity(string Account, string FileName, FileSystemRights Rights, AccessControlType ControlType)
-        {
-            // Create a new DirectoryInfo object.
-            DirectoryInfo dInfo = new DirectoryInfo(FileName);
-
-            // Get a DirectorySecurity object that represents the 
-            // current security settings.
-            DirectorySecurity dSecurity = dInfo.GetAccessControl();
-
-
-
-
-            // Add the FileSystemAccessRule to the security settings. 
-            //dSecurity.AddAccessRule(new FileSystemAccessRule(Account, Rights, ControlType));
-            string sSid = GetSid(Account, server_name, "Toshiba", "power1");
-            var sid = new SecurityIdentifier(sSid);
-
-            dSecurity.AddAccessRule(
-               new FileSystemAccessRule(
-                   sid,
-                   FileSystemRights.FullControl,
-                   InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
-                   PropagationFlags.None,
-                   AccessControlType.Allow));
-
-            // Set the new access settings.
-            dInfo.SetAccessControl(dSecurity);
-        }
-
-        
     }
 }
