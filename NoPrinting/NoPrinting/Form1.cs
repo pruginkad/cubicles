@@ -132,6 +132,10 @@ namespace NoPrinting
         [DllImport("user32.dll")]
         public static extern bool PrintWindow(IntPtr hWnd, IntPtr hdcBlt, int nFlags);
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, UInt32 Msg, IntPtr wParam, IntPtr lParam);
+
+        private const UInt32 WM_CLOSE = 0x0010;
 
         public static Bitmap PrintWindow(IntPtr hwnd)
         {
@@ -194,7 +198,13 @@ namespace NoPrinting
         public Form1()
         {
             InitializeComponent();
+            if (DesignMode)
+            {
+                return;
+            }
+            
             Hook();
+            TopMost = true;
             //Visible = false;
             //WindowState = FormWindowState.Minimized;
         }
@@ -245,9 +255,10 @@ namespace NoPrinting
         static bool OurProc(string process)
         {
             if (process.Contains("chrome") ||
-                            process.Contains("iexplore") ||
+                    process.Contains("iexplore") ||
+                        process.Contains("edge") ||
                             process.Contains("opera") ||
-                            process.Contains("firefox"))
+                                process.Contains("firefox"))
             {
                 return true;
             }
@@ -284,16 +295,16 @@ namespace NoPrinting
             return CallNextHookEx(hHook, nCode, wParam, lParam);
         }
 
-        private Bitmap GetWindowScreenshot(IntPtr hwnd)
+        private Bitmap GetWindowScreenshot(IntPtr hwnd, POINT pt)
         {
             RECT rc;
             GetWindowRect(hwnd, out rc);
 
             int width = rc.Right - rc.Left;
-            int height = rc.Bottom- rc.Top;
+            int height = SystemFonts.MenuFont.Height * 4;//rc.Bottom- rc.Top;
             Bitmap bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
             Graphics.FromImage(bmp).CopyFromScreen(rc.Left,
-                                                   rc.Top,
+                                                   pt.y - height/2,
                                                    0,
                                                    0,
                                                    new Size(width, height),
@@ -340,16 +351,14 @@ namespace NoPrinting
                     IntPtr curHwnd = WindowFromPoint(MyMouseHookStruct.pt);
                     if(curHwnd != IntPtr.Zero)
                     {
-                        //Bitmap bmp = PrintWindow(curHwnd);
-                        Bitmap bmp = GetWindowScreenshot(curHwnd);
+                        Bitmap bmp = GetWindowScreenshot(curHwnd, MyMouseHookStruct.pt);
+                        pictureBox1.Image = bmp;
                         if (FindPrintWord(bmp))
                         {
+                            //SendMessage(curHwnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
                             return 1;
                         }
-                        else
-                        {
-                            pictureBox1.Image = bmp;
-                        }                        
+                                             
                     }
                     else
                     {
@@ -365,42 +374,84 @@ namespace NoPrinting
             return CallNextHookEx(hMouseHook, nCode, wParam, lParam);
         }
 
-        bool FindPrintWord(Bitmap bmp)
+
+        Bitmap CreatePrintTemplate(int h)
         {
+            Bitmap printBmp = null;
             try
             {
+                string strPrint = "Print";
+                printBmp = new Bitmap(400, 100);
+                Graphics g = Graphics.FromImage(printBmp);
+                SizeF stringSize = new SizeF();
+                Font font = new Font(SystemFonts.MenuFont.FontFamily, h);
+                stringSize = g.MeasureString(strPrint, font);
+                printBmp = new Bitmap((int)stringSize.Width, (int)stringSize.Height);
+                g = Graphics.FromImage(printBmp);
+                g.FillRectangle(new SolidBrush(SystemColors.MenuHighlight), 0, 0, printBmp.Width, printBmp.Height);
+                g.DrawString(strPrint, font, new SolidBrush(SystemColors.MenuText), 0, 0);
+                g.Flush();
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+
+            return printBmp;
+        }
+
+        bool FindPrintWord(Bitmap bmp)
+        {
+            
                 Image<Gray, float> source = new Image<Gray, float>(bmp); // Image B
-                    Image<Gray, float> template = new Image<Gray, float>("F:\\print.bmp"); // Image A
-                    Image<Bgr, byte> imageToShow = new Image<Bgr, byte>(bmp);
-
-                    for (double i = 1; i > 0.1; i -= 0.1)
+                //Image<Gray, float> template = new Image<Gray, float>(printBmp); // Image A
+                Image<Bgr, byte> imageToShow = new Image<Bgr, byte>(bmp);
+                double maxim = 0;
+                int start_h = Math.Max(SystemFonts.MenuFont.Height, bmp.Height);
+                for (int i = start_h; i >= SystemFonts.MenuFont.Height/2; i--)
+                {
+                    Bitmap printBmp = CreatePrintTemplate(i);
+                    if (printBmp.Height > bmp.Height || printBmp.Width > bmp.Width)
                     {
-                        Image<Gray, float> template_scaled =
-                            template.Resize(i, Emgu.CV.CvEnum.Inter.Linear);
-                
-                            using (Image<Gray, float> result = source.MatchTemplate(template_scaled, Emgu.CV.CvEnum.TemplateMatchingType.CcoeffNormed))
-                            {
-                                double[] minValues, maxValues;
-                                Point[] minLocations, maxLocations;
-                                result.MinMax(out minValues, out maxValues, out minLocations, out maxLocations);
+                        continue;
+                    }
+                    try
+                    {
+                    
+                        Image<Gray, float> template_scaled = new Image<Gray, float>(printBmp);//template.Resize(i, Emgu.CV.CvEnum.Inter.Cubic);
 
-                                // You can try different values of the threshold. I guess somewhere between 0.75 and 0.95 would be good.
-                                if (maxValues[0] > 0.5)
-                                {
-                                    // This is a match. Do something with it, for example draw a rectangle around it.
-                                    Rectangle match = new Rectangle(maxLocations[0], template_scaled.Size);
-                                    imageToShow.Draw(match, new Bgr(Color.Red), 1);
-                                    pictureBox1.Image = imageToShow.Bitmap;
-                                    return true;
-                                }
+                        using (Image<Gray, float> result = source.MatchTemplate(template_scaled, Emgu.CV.CvEnum.TemplateMatchingType.CcoeffNormed))
+                        {
+                            double[] minValues, maxValues;
+                            Point[] minLocations, maxLocations;
+                            result.MinMax(out minValues, out maxValues, out minLocations, out maxLocations);
+
+                            // You can try different values of the threshold. I guess somewhere between 0.75 and 0.95 would be good.
+                            if (maxValues[0] > 0.7)
+                            {
+                                // This is a match. Do something with it, for example draw a rectangle around it.
+                                Rectangle match = new Rectangle(maxLocations[0], template_scaled.Size);
+                                imageToShow.Draw(match, new Bgr(Color.Red), 1);
+                                pictureBox1.Image = imageToShow.Bitmap;
+                                Application.OpenForms[0].Text = "Value = " + maxValues[0].ToString();
+                                pictureBox2.Image = printBmp;
+                                return true;
                             }
+                            if(maxim < maxValues[0])
+                            {
+                                maxim = maxValues[0];
+                                Application.OpenForms[0].Text = "i=" + i.ToString() +"Value = " + maxValues[0].ToString();
+                                pictureBox2.Image = printBmp;
+                            }                            
+                        }
+                    }
+                    catch (CvException ex)
+                    {
 
                     }
-                }
-                catch (CvException ex)
-                {
 
                 }
+            
             return false;
         }
         bool bTerminate = false;
@@ -412,7 +463,10 @@ namespace NoPrinting
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
-            Unhook();
+            if (!DesignMode)
+            {
+                Unhook();
+            }            
         }
 
         private void Form1_Load(object sender, EventArgs e)
