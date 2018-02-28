@@ -8,39 +8,47 @@ using System.Text;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Drawing.Imaging;
+
 
 namespace NoPrinting
 {
     public partial class Form1 : Form
     {
         public delegate int HookProc(int nCode, IntPtr wParam, IntPtr lParam);
+        public delegate int MouseHookProc(int nCode, IntPtr wParam, IntPtr lParam);
 
         //Declare the hook handle as an int.
         static int hHook = 0;
+        static int hMouseHook = 0;
 
         //Declare the mouse hook constant.
         //For other hook types, you can obtain these values from Winuser.h in the Microsoft SDK.
         public const int WH_KEYBOARD_LL = 13;
+        private const int WH_MOUSE_LL = 14;
 
         //Declare MouseHookProcedure as a HookProc type.
         HookProc KbHookProcedureDelegate;
+        HookProc MouseHookProcedureDelegate;
 
         //Declare the wrapper managed POINT class.
         [StructLayout(LayoutKind.Sequential)]
-        public class POINT
+        public struct POINT
         {
             public int x;
             public int y;
         }
 
         //Declare the wrapper managed MouseHookStruct class.
+        
         [StructLayout(LayoutKind.Sequential)]
-        public class MouseHookStruct
+        public struct MSLLHOOKSTRUCT
         {
             public POINT pt;
-            public int hwnd;
-            public int wHitTestCode;
-            public int dwExtraInfo;
+            public uint mouseData;
+            public uint flags;
+            public uint time;
+            public IntPtr dwExtraInfo;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -109,6 +117,32 @@ namespace NoPrinting
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
 
+        [DllImport("user32.dll")]
+        static extern IntPtr WindowFromPoint(POINT Point);
+
+        [DllImport("user32.dll")]
+        public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+        [DllImport("user32.dll")]
+        public static extern bool PrintWindow(IntPtr hWnd, IntPtr hdcBlt, int nFlags);
+
+
+        public static Bitmap PrintWindow(IntPtr hwnd)
+        {
+            RECT rc;
+            GetWindowRect(hwnd, out rc);
+
+            Bitmap bmp = new Bitmap(rc.Width, rc.Height, PixelFormat.Format32bppArgb);
+            Graphics gfxBmp = Graphics.FromImage(bmp);
+            IntPtr hdcBitmap = gfxBmp.GetHdc();
+
+            PrintWindow(hwnd, hdcBitmap, 0);
+
+            gfxBmp.ReleaseHdc(hdcBitmap);
+            gfxBmp.Dispose();
+
+            return bmp;
+        }
+
         static string GetWindowClassName(IntPtr hWnd)
         {
             const int nChars = 1024;
@@ -128,6 +162,16 @@ namespace NoPrinting
             return (filename.ToString().ToLower());
         }
 
+        private enum MouseMessages
+        {
+            WM_LBUTTONDOWN = 0x0201,
+            WM_LBUTTONUP = 0x0202,
+            WM_MOUSEMOVE = 0x0200,
+            WM_MOUSEWHEEL = 0x020A,
+            WM_RBUTTONDOWN = 0x0204,
+            WM_RBUTTONUP = 0x0205
+        }
+
         static  string GetActiveProcessName()
         {
             return GetWindowModuleFileName(GetForegroundWindow());
@@ -144,41 +188,51 @@ namespace NoPrinting
         {
             InitializeComponent();
             Hook();
-            Visible = false;
+            //Visible = false;
+            //WindowState = FormWindowState.Minimized;
         }
 
         void Hook()
         {
-            // Create an instance of HookProc.
             KbHookProcedureDelegate = new HookProc(Form1.KbHookProcedure);
+            //hHook = SetWindowsHookEx(WH_KEYBOARD_LL, KbHookProcedure, (IntPtr)0, 0);
+            
+            //if (hHook == 0)
+            //{
+            //    MessageBox.Show("SetWindowsHookEx WH_KEYBOARD_LL Failed");
+            //}
 
-            hHook = SetWindowsHookEx(WH_KEYBOARD_LL,
-            KbHookProcedure,
-            (IntPtr)0,
-            0);
-            //If the SetWindowsHookEx function fails.
-            if (hHook == 0)
+            MouseHookProcedureDelegate = new HookProc(this.MouseHookProcedure);
+            hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProcedureDelegate, (IntPtr)0, 0);
+
+            if (hMouseHook == 0)
             {
-                MessageBox.Show("SetWindowsHookEx Failed");
-                return;
+                MessageBox.Show("SetWindowsHookEx WH_MOUSE_LL Failed");
             }
+
         }
 
         void Unhook()
         {
             bool ret = UnhookWindowsHookEx(hHook);
-            //If the UnhookWindowsHookEx function fails.
+            
+            if (ret == false)
+            {
+                //MessageBox.Show("UnhookWindowsHookEx Failed");
+            }
+            hHook = 0;
+
+            ret = UnhookWindowsHookEx(hMouseHook);
             if (ret == false)
             {
                 MessageBox.Show("UnhookWindowsHookEx Failed");
-                return;
             }
-            hHook = 0;
+            hMouseHook = 0;
         }
 
         private void button1_Click(object sender, System.EventArgs e)
         {
-            Visible = false;
+            //Visible = false;
         }
 
         const int WM_KEYDOWN = 0x0100;
@@ -187,24 +241,89 @@ namespace NoPrinting
         public static int KbHookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
         {
             //Marshall the data from the callback.
-            
-            if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
+            try
             {
-                KBDLLHOOKSTRUCT kbd = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
-                if(kbd.vkCode == 80 && (GetAsyncKeyState(VK_CONTROL)&0x8000) != 0)
-		        {
-                    string process = GetActiveProcessName();
-                    if (process.Contains("chrome") ||
-                        process.Contains("iexplore") ||
-                        process.Contains("opera") ||
-                        process.Contains("firefox"))
+                if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
+                {
+                    KBDLLHOOKSTRUCT kbd = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
+                    if (kbd.vkCode == 80 && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0)
                     {
-                        Application.OpenForms[0].Visible = true;
-                        Application.OpenForms[0].WindowState = FormWindowState.Normal;
-                        return 1;			        
-                    }                    
-		        }
+                        string process = GetActiveProcessName();
+                        if (process.Contains("chrome") ||
+                            process.Contains("iexplore") ||
+                            process.Contains("opera") ||
+                            process.Contains("firefox"))
+                        {
+                            Application.OpenForms[0].Visible = true;
+                            Application.OpenForms[0].WindowState = FormWindowState.Normal;
+                            return 1;
+                        }
+                    }
+                }
             }
+            catch
+            {
+
+            }
+            
+            return CallNextHookEx(hHook, nCode, wParam, lParam);
+        }
+
+        private Bitmap GetWindowScreenshot(IntPtr hwnd)
+        {
+            RECT rc;
+            GetWindowRect(hwnd, out rc);
+
+            int width = rc.Right - rc.Left;
+            int height = rc.Bottom- rc.Top;
+            Bitmap bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+            Graphics.FromImage(bmp).CopyFromScreen(rc.Left,
+                                                   rc.Top,
+                                                   0,
+                                                   0,
+                                                   new Size(width, height),
+                                                   CopyPixelOperation.SourceCopy);
+            return bmp;
+        }
+
+        public int MouseHookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            //Marshall the data from the callback.
+            try
+            {
+                //Marshall the data from the callback.
+                MSLLHOOKSTRUCT MyMouseHookStruct = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
+
+                if (nCode >= 0 &&  MouseMessages.WM_LBUTTONDOWN == (MouseMessages)wParam)
+                {
+                    //Create a string variable that shows the current mouse coordinates.
+                    String strCaption = "x = " +
+                    MyMouseHookStruct.pt.x.ToString("d") +
+                    "  y = " +
+                    MyMouseHookStruct.pt.y.ToString("d");
+                    //You must get the active form because it is a static function.
+                    Form tempForm = Application.OpenForms[0];
+
+                    //Set the caption of the form.
+                    tempForm.Text = strCaption;
+                    IntPtr curHwnd = WindowFromPoint(MyMouseHookStruct.pt);
+                    if(curHwnd != IntPtr.Zero)
+                    {
+                        //Bitmap bmp = PrintWindow(curHwnd);
+                        Image bmp = GetWindowScreenshot(curHwnd);
+                        pictureBox1.Image = bmp;
+                    }
+                    else
+                    {
+                        tempForm.Text = "Unable";
+                    }
+                }
+            }
+            catch
+            {
+
+            }
+
             return CallNextHookEx(hHook, nCode, wParam, lParam);
         }
 
@@ -222,9 +341,9 @@ namespace NoPrinting
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            Visible = false;
-            Hide();
-            SetVisibleCore(false);
+            //Visible = false;
+            //Hide();
+            //SetVisibleCore(false);
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -232,5 +351,9 @@ namespace NoPrinting
             bTerminate = true;
             Close();
         }
+
+
+        //////////////////////////////////////////
+        //////////////////////////////////////////
     }
 }
