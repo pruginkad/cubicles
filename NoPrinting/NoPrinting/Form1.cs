@@ -10,6 +10,13 @@ using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Drawing.Imaging;
 
+using Emgu.CV;
+using Emgu.CV.CvEnum;
+using Emgu.CV.Features2D;
+using Emgu.CV.Structure;
+using Emgu.CV.UI;
+using Emgu.CV.Util;
+using Emgu.CV.Cuda;
 
 namespace NoPrinting
 {
@@ -235,6 +242,17 @@ namespace NoPrinting
             //Visible = false;
         }
 
+        static bool OurProc(string process)
+        {
+            if (process.Contains("chrome") ||
+                            process.Contains("iexplore") ||
+                            process.Contains("opera") ||
+                            process.Contains("firefox"))
+            {
+                return true;
+            }
+            return false;
+        }
         const int WM_KEYDOWN = 0x0100;
         const int WM_SYSKEYDOWN = 0x0104;
 
@@ -249,10 +267,7 @@ namespace NoPrinting
                     if (kbd.vkCode == 80 && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0)
                     {
                         string process = GetActiveProcessName();
-                        if (process.Contains("chrome") ||
-                            process.Contains("iexplore") ||
-                            process.Contains("opera") ||
-                            process.Contains("firefox"))
+                        if(OurProc(process))
                         {
                             Application.OpenForms[0].Visible = true;
                             Application.OpenForms[0].WindowState = FormWindowState.Normal;
@@ -286,6 +301,7 @@ namespace NoPrinting
             return bmp;
         }
 
+        bool m_bRightClickHappen = false;
         public int MouseHookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
         {
             //Marshall the data from the callback.
@@ -293,9 +309,24 @@ namespace NoPrinting
             {
                 //Marshall the data from the callback.
                 MSLLHOOKSTRUCT MyMouseHookStruct = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
-
-                if (nCode >= 0 &&  MouseMessages.WM_LBUTTONDOWN == (MouseMessages)wParam)
+                if (nCode >= 0 && MouseMessages.WM_RBUTTONUP == (MouseMessages)wParam)
                 {
+                    m_bRightClickHappen = false;
+                    IntPtr curHwnd = WindowFromPoint(MyMouseHookStruct.pt);
+                    if(curHwnd != IntPtr.Zero)
+                    {
+                        string process = GetWindowModuleFileName(curHwnd);
+                        if (OurProc(process))
+                        {
+                            m_bRightClickHappen = true;
+                        }
+                    }
+                    
+                }
+
+                if (m_bRightClickHappen && nCode >= 0 && MouseMessages.WM_LBUTTONUP == (MouseMessages)wParam)
+                {
+                    m_bRightClickHappen = false;
                     //Create a string variable that shows the current mouse coordinates.
                     String strCaption = "x = " +
                     MyMouseHookStruct.pt.x.ToString("d") +
@@ -310,8 +341,15 @@ namespace NoPrinting
                     if(curHwnd != IntPtr.Zero)
                     {
                         //Bitmap bmp = PrintWindow(curHwnd);
-                        Image bmp = GetWindowScreenshot(curHwnd);
-                        pictureBox1.Image = bmp;
+                        Bitmap bmp = GetWindowScreenshot(curHwnd);
+                        if (FindPrintWord(bmp))
+                        {
+                            return 1;
+                        }
+                        else
+                        {
+                            pictureBox1.Image = bmp;
+                        }                        
                     }
                     else
                     {
@@ -319,14 +357,52 @@ namespace NoPrinting
                     }
                 }
             }
-            catch
+            catch(Exception ex)
             {
 
             }
 
-            return CallNextHookEx(hHook, nCode, wParam, lParam);
+            return CallNextHookEx(hMouseHook, nCode, wParam, lParam);
         }
 
+        bool FindPrintWord(Bitmap bmp)
+        {
+            try
+            {
+                Image<Gray, float> source = new Image<Gray, float>(bmp); // Image B
+                    Image<Gray, float> template = new Image<Gray, float>("F:\\print.bmp"); // Image A
+                    Image<Bgr, byte> imageToShow = new Image<Bgr, byte>(bmp);
+
+                    for (double i = 1; i > 0.1; i -= 0.1)
+                    {
+                        Image<Gray, float> template_scaled =
+                            template.Resize(i, Emgu.CV.CvEnum.Inter.Linear);
+                
+                            using (Image<Gray, float> result = source.MatchTemplate(template_scaled, Emgu.CV.CvEnum.TemplateMatchingType.CcoeffNormed))
+                            {
+                                double[] minValues, maxValues;
+                                Point[] minLocations, maxLocations;
+                                result.MinMax(out minValues, out maxValues, out minLocations, out maxLocations);
+
+                                // You can try different values of the threshold. I guess somewhere between 0.75 and 0.95 would be good.
+                                if (maxValues[0] > 0.5)
+                                {
+                                    // This is a match. Do something with it, for example draw a rectangle around it.
+                                    Rectangle match = new Rectangle(maxLocations[0], template_scaled.Size);
+                                    imageToShow.Draw(match, new Bgr(Color.Red), 1);
+                                    pictureBox1.Image = imageToShow.Bitmap;
+                                    return true;
+                                }
+                            }
+
+                    }
+                }
+                catch (CvException ex)
+                {
+
+                }
+            return false;
+        }
         bool bTerminate = false;
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
