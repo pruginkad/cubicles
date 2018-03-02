@@ -65,31 +65,34 @@
             this.button2.TabIndex = 2;
             this.button2.Text = "Terminate";
             this.button2.UseVisualStyleBackColor = true;
+            this.button2.Visible = false;
             this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
             // pictureBox1
             // 
             this.pictureBox1.BackColor = System.Drawing.Color.LightPink;
-            this.pictureBox1.Location = new System.Drawing.Point(241, 123);
+            this.pictureBox1.Location = new System.Drawing.Point(12, 115);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(175, 127);
+            this.pictureBox1.Size = new System.Drawing.Size(58, 33);
             this.pictureBox1.TabIndex = 3;
             this.pictureBox1.TabStop = false;
+            this.pictureBox1.Visible = false;
             // 
             // pictureBox2
             // 
             this.pictureBox2.BackColor = System.Drawing.Color.LightCyan;
-            this.pictureBox2.Location = new System.Drawing.Point(12, 123);
+            this.pictureBox2.Location = new System.Drawing.Point(12, 83);
             this.pictureBox2.Name = "pictureBox2";
-            this.pictureBox2.Size = new System.Drawing.Size(223, 127);
+            this.pictureBox2.Size = new System.Drawing.Size(58, 26);
             this.pictureBox2.TabIndex = 4;
             this.pictureBox2.TabStop = false;
+            this.pictureBox2.Visible = false;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(411, 262);
+            this.ClientSize = new System.Drawing.Size(291, 150);
             this.Controls.Add(this.pictureBox2);
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.button2);

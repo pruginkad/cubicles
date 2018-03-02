@@ -167,9 +167,25 @@ namespace NoPrinting
             const int nChars = 1024;
             StringBuilder filename = new StringBuilder(nChars);
             GetWindowThreadProcessId(hWnd, out processId);
+
+
             IntPtr hProcess = OpenProcess(1040, 0, processId);
             GetModuleFileNameEx(hProcess, IntPtr.Zero, filename, nChars);
             CloseHandle(hProcess);
+
+            if (filename.ToString().ToLower().Contains("applicationframehost"))
+            {
+                var allChildWindows = new WindowHandleInfo(hWnd).GetAllChildHandles();
+                foreach (IntPtr hwnd_child in allChildWindows)
+                {
+                    uint child_processId = 0;
+                    GetWindowThreadProcessId(hwnd_child, out child_processId);
+                    if (child_processId != processId)
+                    {
+                        return GetWindowModuleFileName(hwnd_child);
+                    }
+                }
+            }
             return (filename.ToString().ToLower());
         }
 
@@ -205,19 +221,19 @@ namespace NoPrinting
             
             Hook();
             TopMost = true;
-            //Visible = false;
-            //WindowState = FormWindowState.Minimized;
+            Visible = false;
+            WindowState = FormWindowState.Minimized;
         }
 
         void Hook()
         {
             KbHookProcedureDelegate = new HookProc(Form1.KbHookProcedure);
-            //hHook = SetWindowsHookEx(WH_KEYBOARD_LL, KbHookProcedure, (IntPtr)0, 0);
-            
-            //if (hHook == 0)
-            //{
-            //    MessageBox.Show("SetWindowsHookEx WH_KEYBOARD_LL Failed");
-            //}
+            hHook = SetWindowsHookEx(WH_KEYBOARD_LL, KbHookProcedure, (IntPtr)0, 0);
+
+            if (hHook == 0)
+            {
+                MessageBox.Show("SetWindowsHookEx WH_KEYBOARD_LL Failed");
+            }
 
             MouseHookProcedureDelegate = new HookProc(this.MouseHookProcedure);
             hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProcedureDelegate, (IntPtr)0, 0);
@@ -249,7 +265,7 @@ namespace NoPrinting
 
         private void button1_Click(object sender, System.EventArgs e)
         {
-            //Visible = false;
+            Visible = false;
         }
 
         static bool OurProc(string process)
@@ -266,6 +282,7 @@ namespace NoPrinting
         }
         const int WM_KEYDOWN = 0x0100;
         const int WM_SYSKEYDOWN = 0x0104;
+        const int WM_DESTROY = 0x0002;
 
         public static int KbHookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
         {
@@ -301,7 +318,7 @@ namespace NoPrinting
             GetWindowRect(hwnd, out rc);
 
             int width = rc.Right - rc.Left;
-            int height = SystemFonts.MenuFont.Height * 4;//rc.Bottom- rc.Top;
+            int height = SystemFonts.MenuFont.Height * 3;//rc.Bottom- rc.Top;
             Bitmap bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
             Graphics.FromImage(bmp).CopyFromScreen(rc.Left,
                                                    pt.y - height/2,
@@ -313,6 +330,7 @@ namespace NoPrinting
         }
 
         bool m_bRightClickHappen = false;
+
         public int MouseHookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
         {
             //Marshall the data from the callback.
@@ -337,7 +355,6 @@ namespace NoPrinting
 
                 if (m_bRightClickHappen && nCode >= 0 && MouseMessages.WM_LBUTTONUP == (MouseMessages)wParam)
                 {
-                    m_bRightClickHappen = false;
                     //Create a string variable that shows the current mouse coordinates.
                     String strCaption = "x = " +
                     MyMouseHookStruct.pt.x.ToString("d") +
@@ -347,7 +364,7 @@ namespace NoPrinting
                     Form tempForm = Application.OpenForms[0];
 
                     //Set the caption of the form.
-                    tempForm.Text = strCaption;
+                    //tempForm.Text = strCaption;
                     IntPtr curHwnd = WindowFromPoint(MyMouseHookStruct.pt);
                     if(curHwnd != IntPtr.Zero)
                     {
@@ -355,15 +372,20 @@ namespace NoPrinting
                         pictureBox1.Image = bmp;
                         if (FindPrintWord(bmp))
                         {
-                            //SendMessage(curHwnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                            //SendMessage(curHwnd, WM_DESTROY, IntPtr.Zero, IntPtr.Zero);
+                            Application.OpenForms[0].Visible = true;
+                            Application.OpenForms[0].WindowState = FormWindowState.Normal;
+
                             return 1;
                         }
                                              
                     }
                     else
                     {
-                        tempForm.Text = "Unable";
+                        //tempForm.Text = "Unable";
                     }
+                    
+                    m_bRightClickHappen = false;
                 }
             }
             catch(Exception ex)
@@ -433,14 +455,14 @@ namespace NoPrinting
                                 Rectangle match = new Rectangle(maxLocations[0], template_scaled.Size);
                                 imageToShow.Draw(match, new Bgr(Color.Red), 1);
                                 pictureBox1.Image = imageToShow.Bitmap;
-                                Application.OpenForms[0].Text = "Value = " + maxValues[0].ToString();
+                                //Application.OpenForms[0].Text = "Value = " + maxValues[0].ToString();
                                 pictureBox2.Image = printBmp;
                                 return true;
                             }
                             if(maxim < maxValues[0])
                             {
                                 maxim = maxValues[0];
-                                Application.OpenForms[0].Text = "i=" + i.ToString() +"Value = " + maxValues[0].ToString();
+                                //Application.OpenForms[0].Text = "i=" + i.ToString() +"Value = " + maxValues[0].ToString();
                                 pictureBox2.Image = printBmp;
                             }                            
                         }
