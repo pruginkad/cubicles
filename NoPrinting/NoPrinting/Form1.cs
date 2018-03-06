@@ -228,7 +228,7 @@ namespace NoPrinting
         void Hook()
         {
             KbHookProcedureDelegate = new HookProc(Form1.KbHookProcedure);
-            hHook = SetWindowsHookEx(WH_KEYBOARD_LL, KbHookProcedure, (IntPtr)0, 0);
+            hHook = SetWindowsHookEx(WH_KEYBOARD_LL, KbHookProcedureDelegate, (IntPtr)0, 0);
 
             if (hHook == 0)
             {
