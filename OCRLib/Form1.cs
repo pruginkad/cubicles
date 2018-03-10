@@ -19,20 +19,28 @@ namespace OCRLib
             InitializeComponent();
         }
 
+        static float[][] gray_matrix = new float[][] {
+                    new float[] { 0.299f, 0.299f, 0.299f, 0, 0 },
+                    new float[] { 0.587f, 0.587f, 0.587f, 0, 0 },
+                    new float[] { 0.114f, 0.114f, 0.114f, 0, 0 },
+                    new float[] { 0,      0,      0,      1, 0 },
+                    new float[] { 0,      0,      0,      0, 1 }};
+        static System.Drawing.Imaging.ImageAttributes ia = new System.Drawing.Imaging.ImageAttributes();
+
         public static Bitmap GetBlackAndWhiteImage(Bitmap SourceImage)
         {
-
             Bitmap bmp = new Bitmap(SourceImage.Width, SourceImage.Height);
 
             using (Graphics gr = Graphics.FromImage(bmp)) // SourceImage is a Bitmap object
             {
-                var gray_matrix = new float[][] {
+                var gray_matrix = new float[][] 
+                {
                     new float[] { 0.299f, 0.299f, 0.299f, 0, 0 },
                     new float[] { 0.587f, 0.587f, 0.587f, 0, 0 },
                     new float[] { 0.114f, 0.114f, 0.114f, 0, 0 },
                     new float[] { 0,      0,      0,      1, 0 },
                     new float[] { 0,      0,      0,      0, 1 }
-            };
+                };
 
                 var ia = new System.Drawing.Imaging.ImageAttributes();
                 ia.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix(gray_matrix));
@@ -40,6 +48,7 @@ namespace OCRLib
                 var rc = new Rectangle(0, 0, SourceImage.Width, SourceImage.Height);
                 gr.DrawImage(SourceImage, rc, 0, 0, SourceImage.Width, SourceImage.Height, GraphicsUnit.Pixel, ia);
             }
+
             return bmp;
         }
 
@@ -66,6 +75,7 @@ namespace OCRLib
                 for (int x = 0; x < bmp_menu.Width; x++)
                 {
                     Color clr = m_bw.GetPixel(x, y);
+                    
                     if (clr != Color.FromArgb(255, Color.White))
                     {
                         bLine = false;
@@ -187,27 +197,25 @@ namespace OCRLib
                     middle_h += row[i].m_rect.Height;
                     nChars++;
 
-                    //if (pt1.X == pt2.X)
-                    {
-                        if(pt1.X > 0) pt1.X--;
-                        if (pt1.X < m_bw.Width) pt2.X++; 
-                    }
-                    //if (pt1.Y == pt2.Y)
-                    {
-                        if (pt1.Y > 0) pt1.Y--;
-                        if (pt1.X < m_bw.Height) pt2.Y++;
-                    }
-
+                    
+                    if(pt1.X > 0) pt1.X--;
+                    if (pt1.X < m_bw.Width) pt2.X++; 
+                    
+                    
+                    if (pt1.Y > 0) pt1.Y--;
+                    if (pt1.X < m_bw.Height) pt2.Y++;
+                    
                     row[i].m_rect = Rectangle.FromLTRB(pt1.X, pt1.Y, pt2.X, pt2.Y);
                     Rectangle temp = Rectangle.FromLTRB(pt1.X, pt1.Y, pt2.X, pt2.Y);
-                    gr.DrawRectangle(pen, temp);
+                    //gr.DrawRectangle(pen, temp);
                 }
             }
             
             gr.Flush();
-            pictureBox1.Image = bmp_menu;
+            
             middle_w = middle_w / nChars;
             middle_h = middle_h / nChars;
+            pictureBox1.Image = bmp_menu;
             //Recognize();
         }
 
@@ -321,70 +329,122 @@ namespace OCRLib
             }
 
 
-            //if (pt1.X == pt2.X)
-            {
-                pt1.X--;
-                pt2.X++;
-            }
-            //if (pt1.Y == pt2.Y)
-            {
-                pt1.Y--;
-                pt2.Y++;
-            }
+            if (pt1.X > 0) pt1.X--;
+            if (pt1.X < bmp.Width) pt2.X++;
+
+
+            if (pt1.Y > 0) pt1.Y--;
+            if (pt1.X < bmp.Height) pt2.Y++;
+
             Rectangle temp = Rectangle.FromLTRB(pt1.X, pt1.Y, pt2.X, pt2.Y);
 
             return bmp.Clone(temp, bmp.PixelFormat);
         }
 
+        SolidBrush white_brush = new SolidBrush(Color.White);
+
+        Bitmap GetBWRect(Rectangle src_rect, Rectangle dst_rect)
+        {
+            Bitmap bmp_orig = new Bitmap(dst_rect.Width, dst_rect.Height);
+            using (Graphics graph = Graphics.FromImage(bmp_orig))
+            {
+                graph.FillRectangle(white_brush, new RectangleF(0, 0, bmp_orig.Width, bmp_orig.Height));
+                graph.DrawImage(m_bw, dst_rect,
+                    src_rect.Left, src_rect.Top, src_rect.Width, src_rect.Height, GraphicsUnit.Pixel, ia);
+                graph.Flush();
+            }
+            return GetBlackAndWhiteImage(bmp_orig);
+        }
+
         void Recognize(Point pt)
         {
             Graphics gr = Graphics.FromImage(bmp_menu);
-
+            listBox1.Items.Clear();
             Recognizer recogn = new Recognizer();
-            Bitmap bmp_templ = GetLetterRect("P");
-            //Graphics g = Graphics.FromImage(bmp);
-            //g.DrawRectangle(pen_green, 0, 0, bmp.Width, bmp.Height);
 
-            var bmp_orig = new Bitmap(bmp_templ);
-            var graph = Graphics.FromImage(bmp_orig);
-            SolidBrush brush = new SolidBrush(Color.White);
+            string[] arrLetters = {"P","r","i","n","t"};
+            List<Bitmap> list = new List<Bitmap>();
+            list.Add(GetLetterRect("P"));
+            list.Add(GetLetterRect("r"));
+            list.Add(GetLetterRect("i"));
+            list.Add(GetLetterRect("n"));
+            list.Add(GetLetterRect("t"));
 
-            for (int j = 0; j < chars_row.Count; j++ )
+ 
+            for (int j = 0; j < chars_row.Count; j++)
             {
+                string cur_word = string.Empty;
                 CharRow row = chars_row[j];
+
                 for (int i = 0; i < row.Count; i++)
                 {
-                    Rectangle rect = row[i].m_rect;
-                    //if (rect.Width <= 3 || rect.Height <= 3)
-                    {
-                        //continue;
-                    }
-                    if (pt != Point.Empty && !rect.Contains(pt))
-                    {
-                        continue;
-                    }
+                    float cur_res = 0;
+                    string cur_letter = string.Empty;
 
-                    graph.FillRectangle(brush, new RectangleF(0, 0, bmp_orig.Width, bmp_orig.Height));
-                    graph.DrawImage(m_bw, new Rectangle(0, 0, bmp_orig.Width, bmp_orig.Height),
-                        rect, GraphicsUnit.Pixel);
-                    float result = recogn.Compare(bmp_templ, bmp_orig);
-                    //if (result > 0.5)
+                    for (int l = 0; l < list.Count; l++)
                     {
-                        gr.DrawRectangle(pen, rect);
-                        pictureBox2.Image = bmp_orig;
-                        pictureBox3.Image = bmp_templ;
-                        //System.Threading.Thread.Sleep(1000);
-                        listBox1.Items.Clear();
-                        listBox1.Items.Add(result.ToString());
-                        return;
+                        Bitmap bmp_templ = list[l];
+                        Rectangle rect = row[i].m_rect;
+                        if (rect.Width <= 1 || rect.Height <= 1)
+                        {
+                            continue;
+                        }
+                        if (pt != Point.Empty
+                            && !rect.Contains(pt)
+                            )
+                        {
+                            //continue;
+                        }
+
+                        Bitmap bmp_orig = GetBWRect(rect, new Rectangle(0, 0, bmp_templ.Width, bmp_templ.Height));
+
+
+                        float result = recogn.Compare(bmp_templ, bmp_orig);
+                        if (cur_res < result)
+                        {
+                            cur_res = result;
+                            cur_letter = arrLetters[l];
+                        }
+                        //if (result > 0.85)
+                        {
+                            //gr.DrawRectangle(pen_green, rect);
+                            pictureBox2.Image = bmp_orig;
+                            pictureBox3.Image = bmp_templ;
+                            //System.Threading.Thread.Sleep(1000);
+
+                            //listBox1.Items.Add(arrLetters[l] +"->" + result.ToString());
+                            //bmp_orig.Save(@"F:\bmp_orig.bmp");
+                            //bmp_templ.Save(@"F:\bmp_templ.bmp");
+                            //return;
+                        }
                     }
+                    cur_word += cur_letter;
+                }
+                if (cur_word.ToLower().Contains("print"))
+                {
+                    gr.DrawRectangle(pen_green, row.m_rect);
+                    StringFormat format = new StringFormat()
+                    {
+                        Alignment = StringAlignment.Center,
+                        LineAlignment = StringAlignment.Center
+                    };
+
+                    // Draw the text onto the image
+                    gr.DrawString(cur_word, SystemFonts.MenuFont, Brushes.Red, row.m_rect, format);
+                    //listBox1.Items.Add("Print found");
                 }
             }
+            gr.Flush();
+            pictureBox1.Image = bmp_menu;
         }
 
 
         Point GetClick()
         {
+            if (pictureBox1.Image == null)
+            {
+                return Point.Empty;
+            }
             Point e = pictureBox1.PointToClient(Cursor.Position);
 
             float ratioX = (float)(pictureBox1.Image.Width) / (float)(pictureBox1.ClientSize.Width);

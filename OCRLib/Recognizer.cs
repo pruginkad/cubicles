@@ -20,6 +20,11 @@ namespace OCRLib
                     Color clr2 = image.GetPixel(x, y);
                     if (clr1 == clr2)
                     {
+                        if (clr2 != Color.FromArgb(255, Color.White) &&
+                            clr2 != Color.FromArgb(255, Color.Black))
+                        {
+                            int g = 0;
+                        }
                         //if (clr2 != Color.FromArgb(255, Color.White))
                         {
                             overlap += 1;
