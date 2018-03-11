@@ -12,6 +12,7 @@ using System.ServiceModel.Web;
 using System.ServiceModel;
 using System.Management;
 using System.Diagnostics;
+using Microsoft.Win32;
 
 namespace WindowsFormsApplication1
 {
@@ -20,9 +21,40 @@ namespace WindowsFormsApplication1
         public Form1()
         {
             InitializeComponent();
-            
+            SystemEvents.SessionEnding += SessionEndingEvtHandler;
         }
 
+        private void SessionEndingEvtHandler(object sender, SessionEndingEventArgs e)
+        {
+            e.Cancel = true;
+            label1.Text = "SessionEndingEvtHandler";
+        }
+
+        private const int WM_QUERYENDSESSION = 0x0011;
+        private bool isShuttingDown = false;
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == WM_QUERYENDSESSION)
+            {
+                isShuttingDown = true;
+                m.Result = IntPtr.Zero;
+                return;
+            }
+            base.WndProc(ref m);
+        }
+        private void frmLogin_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (isShuttingDown)
+            {
+                if (MessageBox.Show(this, "The application is still running, are you sure you want to exit?",
+                "Confirm Closing by Windows Shutdown", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == System.Windows.Forms.DialogResult.Yes)
+                {
+                    e.Cancel = false;
+                }
+                else
+                    e.Cancel = true;
+            }
+        }
         public String getUsername()
         {
             string username = string.Empty;
@@ -65,6 +97,12 @@ namespace WindowsFormsApplication1
 
             System.Diagnostics.EventLog.Delete("AService1Events");
             this.Text = getUsername();   
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.WindowsShutDown || isShuttingDown)
+                e.Cancel = true;
         }
     }
 }

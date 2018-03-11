@@ -17,6 +17,8 @@ namespace OCRLib
             get;
             set;
         }
+
+        public Dictionary<string, float> m_weights = new Dictionary<string, float>();
     }
 
     public class CharRow : List<CharRect>
@@ -24,7 +26,14 @@ namespace OCRLib
         public CharRow(Rectangle lines_bmp)
         {
             m_rect = lines_bmp;
+            m_FullRect = lines_bmp;
         }
-        public Rectangle m_rect = new Rectangle(); 
+        public Rectangle m_rect = new Rectangle();
+        
+        public Rectangle m_FullRect
+        {
+            get;
+            set;
+        }
     }
 }

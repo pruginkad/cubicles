@@ -9,14 +9,7 @@ using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Drawing.Imaging;
-
-using Emgu.CV;
-using Emgu.CV.CvEnum;
-using Emgu.CV.Features2D;
-using Emgu.CV.Structure;
-using Emgu.CV.UI;
-using Emgu.CV.Util;
-using Emgu.CV.Cuda;
+using OCRLib;
 
 namespace NoPrinting
 {
@@ -422,60 +415,31 @@ namespace NoPrinting
             return printBmp;
         }
 
-        bool FindPrintWord(Bitmap bmp)
+        Recognizer recogn = new Recognizer();
+
+        bool FindPrintWord(Bitmap bmp_menu)
         {
-            
-                Image<Gray, float> source = new Image<Gray, float>(bmp); // Image B
-                //Image<Gray, float> template = new Image<Gray, float>(printBmp); // Image A
-                Image<Bgr, byte> imageToShow = new Image<Bgr, byte>(bmp);
-                double maxim = 0;
-                int start_h = Math.Max(SystemFonts.MenuFont.Height, bmp.Height);
-                for (int i = start_h; i >= SystemFonts.MenuFont.Height/2; i--)
-                {
-                    Bitmap printBmp = CreatePrintTemplate(i);
-                    if (printBmp.Height > bmp.Height || printBmp.Width > bmp.Width)
-                    {
-                        continue;
-                    }
-                    try
-                    {
-                    
-                        Image<Gray, float> template_scaled = new Image<Gray, float>(printBmp);//template.Resize(i, Emgu.CV.CvEnum.Inter.Cubic);
+            recogn.LoadBmp(bmp_menu);
 
-                        using (Image<Gray, float> result = source.MatchTemplate(template_scaled, Emgu.CV.CvEnum.TemplateMatchingType.CcoeffNormed))
-                        {
-                            double[] minValues, maxValues;
-                            Point[] minLocations, maxLocations;
-                            result.MinMax(out minValues, out maxValues, out minLocations, out maxLocations);
+            List<string> arrAddLetters = new List<string>();
+            arrAddLetters.Add("ri");
+            CharRow row = recogn.Recognize("Print", arrAddLetters);
 
-                            // You can try different values of the threshold. I guess somewhere between 0.75 and 0.95 would be good.
-                            if (maxValues[0] > 0.7)
-                            {
-                                // This is a match. Do something with it, for example draw a rectangle around it.
-                                Rectangle match = new Rectangle(maxLocations[0], template_scaled.Size);
-                                imageToShow.Draw(match, new Bgr(Color.Red), 1);
-                                pictureBox1.Image = imageToShow.Bitmap;
-                                //Application.OpenForms[0].Text = "Value = " + maxValues[0].ToString();
-                                pictureBox2.Image = printBmp;
-                                return true;
-                            }
-                            if(maxim < maxValues[0])
-                            {
-                                maxim = maxValues[0];
-                                //Application.OpenForms[0].Text = "i=" + i.ToString() +"Value = " + maxValues[0].ToString();
-                                pictureBox2.Image = printBmp;
-                            }                            
-                        }
-                    }
-                    catch (CvException ex)
-                    {
+            if (row != null)
+            {
+                //Pen pen = new Pen(new SolidBrush(Color.Red));
+                //Pen pen_green = new Pen(new SolidBrush(Color.Green));
 
-                    }
+                //pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
+                //pen_green.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
 
-                }
-            
+                //Graphics gr = Graphics.FromImage(bmp_menu);
+                //gr.DrawRectangle(pen_green, row.m_FullRect);
+                return true;
+            }
             return false;
         }
+
         bool bTerminate = false;
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
