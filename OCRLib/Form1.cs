@@ -247,12 +247,76 @@ namespace OCRLib
 
         private void timer1_Tick(object sender, EventArgs e)
         {
+            float brightness_white = (float)0.0;
             POINT pt = new POINT() { x = Cursor.Position.X, y = Cursor.Position.Y };
             IntPtr curHwnd = WindowFromPoint(pt);
             if (curHwnd != IntPtr.Zero)
             {
                 Bitmap bmp = GetWindowScreenshot(curHwnd, pt);
+                //Cut Selection
+                for (int y = 0 ; y < bmp.Height; y++)
+                {
+                    int x = bmp.Width / 2;
+                    Color clr = bmp.GetPixel(x, y);
+                    if (clr.GetBrightness() > brightness_white)
+                    {
+                        brightness_white = clr.GetBrightness();
+                    }
+                }
+
+                brightness_white = brightness_white - (float)0.01;
+
+                int top = 0;
+                int bottom = bmp.Height - 1;
+                for (int y = bmp.Height/2; y >= 0; y--)
+                {
+                    int line_empty_weight = 0;
+                    for (int x = 0; x < bmp.Width; x++)
+                    {
+                        Color clr = bmp.GetPixel(x, y);
+                        if (clr.GetBrightness() > brightness_white)
+                        {
+                            line_empty_weight++;
+                        }
+                    }
+                    if (line_empty_weight > bmp.Width / 2)
+                    {
+                        top = y;
+                        break;
+                    }
+                }
+
+                for (int y = bmp.Height / 2; y < bmp.Height; y++)
+                {
+                    int line_empty_weight = 0;
+                    for (int x = 0; x < bmp.Width; x++)
+                    {
+                        Color clr = bmp.GetPixel(x, y);
+                        if (clr.GetBrightness() > brightness_white)
+                        {
+                            line_empty_weight++;
+                        }
+                    }
+                    if (line_empty_weight > bmp.Width * 5 / 6)
+                    {
+                        bottom = y;
+                        break;
+                    }
+                }
+                Rectangle rect = Rectangle.FromLTRB(0, top, bmp.Width, bottom);
+                if (rect.Height < 3)
+                {
+                    //pictureBox1.Image = bmp;
+                    //return;
+                }
+                //bmp = bmp.Clone(rect, bmp.PixelFormat);
                 Recognize(bmp);
+                Pen pen = new Pen(new SolidBrush(Color.Red));
+                pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
+                Graphics gr = Graphics.FromImage(bmp);
+                gr.DrawRectangle(pen, rect);
+                gr.DrawLine(new Pen(Color.YellowGreen), new Point(0, bmp.Height / 2), new Point(bmp.Width, bmp.Height / 2));
+                pictureBox1.Image = bmp;
             }
         }
     }
