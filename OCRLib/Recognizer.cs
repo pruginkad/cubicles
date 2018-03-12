@@ -67,22 +67,24 @@ namespace OCRLib
         }
 
         public Bitmap m_bw = null;
-        
-        List<CharRow> chars_row = new List<CharRow>();
+        Rectangle m_cut_menu_rect = Rectangle.Empty;
 
+        List<CharRow> chars_row = new List<CharRow>();
+        
         public void LoadBmp(Bitmap bmp_menu)
         {
+            m_cut_menu_rect = CutMenuItem(bmp_menu);
             chars_row.Clear();
             m_bw = GetBlackAndWhiteImage(bmp_menu);
 
             int row_start_end = 0;
 
             int line_start = 0;
-            for (int y = 0; y < bmp_menu.Height; y++)
+            for (int y = m_cut_menu_rect.Top; y < m_cut_menu_rect.Bottom; y++)
             {
                 bool bLine = true;
 
-                for (int x = 0; x < bmp_menu.Width; x++)
+                for (int x = m_cut_menu_rect.Left; x < m_cut_menu_rect.Right; x++)
                 {
                     Color clr = m_bw.GetPixel(x, y);
 
@@ -457,5 +459,67 @@ namespace OCRLib
             orig = null;
             return null;
         }
+        
+        public Rectangle CutMenuItem(Bitmap bmp)
+        {
+            float brightness_white = (float)0.0;
+            //Cut Selection
+            for (int y = 0; y < bmp.Height; y++)
+            {
+                int x = bmp.Width / 2;
+                Color clr = bmp.GetPixel(x, y);
+                if (clr.GetBrightness() > brightness_white)
+                {
+                    brightness_white = clr.GetBrightness();
+                }
+            }
+
+            brightness_white = brightness_white - (float)0.01;
+
+            int top = 0;
+            int bottom = bmp.Height - 1;
+            for (int y = bmp.Height / 2; y >= 0; y--)
+            {
+                int line_empty_weight = 0;
+                for (int x = 0; x < bmp.Width; x++)
+                {
+                    Color clr = bmp.GetPixel(x, y);
+                    if (clr.GetBrightness() > brightness_white)
+                    {
+                        line_empty_weight++;
+                    }
+                }
+                if (line_empty_weight > bmp.Width / 2)
+                {
+                    top = y;
+                    break;
+                }
+            }
+
+            for (int y = bmp.Height / 2; y < bmp.Height; y++)
+            {
+                int line_empty_weight = 0;
+                for (int x = 0; x < bmp.Width; x++)
+                {
+                    Color clr = bmp.GetPixel(x, y);
+                    if (clr.GetBrightness() > brightness_white)
+                    {
+                        line_empty_weight++;
+                    }
+                }
+                if (line_empty_weight > bmp.Width * 5 / 6)
+                {
+                    bottom = y;
+                    break;
+                }
+            }
+            Rectangle rect = Rectangle.FromLTRB(0, top, bmp.Width, bottom);
+            if (rect.Height < 2)
+            {
+                rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
+            }
+            return rect;
+        }
     }
+
 }
