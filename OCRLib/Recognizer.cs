@@ -22,15 +22,7 @@ namespace OCRLib
                     Color clr2 = image.GetPixel(x, y);
                     if (clr1 == clr2)
                     {
-                        if (clr2 != Color.FromArgb(255, Color.White) &&
-                            clr2 != Color.FromArgb(255, Color.Black))
-                        {
-                            int g = 0;
-                        }
-                        //if (clr2 != Color.FromArgb(255, Color.White))
-                        {
-                            overlap += 1;
-                        }
+                        overlap += 1;                        
                     }
                     else
                     {
@@ -67,13 +59,16 @@ namespace OCRLib
         }
 
         public Bitmap m_bw = null;
-        Rectangle m_cut_menu_rect = Rectangle.Empty;
+        public Rectangle m_cut_menu_rect = Rectangle.Empty;
 
-        List<CharRow> chars_row = new List<CharRow>();
-        
+        public List<CharRow> chars_row = new List<CharRow>();
+
+        public Color m_letterBkColor = Color.FromArgb(255, Color.White);
         public void LoadBmp(Bitmap bmp_menu)
         {
+            m_cut_menu_rect = new Rectangle(0, 0, bmp_menu.Width, bmp_menu.Height);
             m_cut_menu_rect = CutMenuItem(bmp_menu);
+
             chars_row.Clear();
             m_bw = GetBlackAndWhiteImage(bmp_menu);
 
@@ -88,7 +83,7 @@ namespace OCRLib
                 {
                     Color clr = m_bw.GetPixel(x, y);
 
-                    if (clr != Color.FromArgb(255, Color.White))
+                    if (clr != m_letterBkColor)
                     {
                         bLine = false;
                         break;
@@ -98,7 +93,7 @@ namespace OCRLib
 
                 if (bLine)
                 {
-                    if (y == 0)
+                    if (y == m_cut_menu_rect.Top)
                     {// first row is line so search for begin
                         row_start_end++;
                         continue;
@@ -135,7 +130,7 @@ namespace OCRLib
                     for (int y = rect.Top; y < rect.Bottom; y++)
                     {
                         Color clr = m_bw.GetPixel(x, y);
-                        if (clr != Color.FromArgb(255, Color.White))
+                        if (clr != m_letterBkColor)
                         {
                             bRow = false;
                             break;
@@ -143,7 +138,7 @@ namespace OCRLib
                     }
                     if (bRow)
                     {
-                        if (x == 0)
+                        if (x == m_cut_menu_rect.Left)
                         {// first row is line so search for begin
                             row_start_end++;
                             continue;
@@ -179,7 +174,7 @@ namespace OCRLib
                         for (int x = rect.Left; x < rect.Right; x++)
                         {
                             Color clr = m_bw.GetPixel(x, y);
-                            if (clr != Color.FromArgb(255, Color.White))
+                            if (clr != m_letterBkColor)
                             {
                                 if (pt2 == Point.Empty)
                                 {
@@ -297,7 +292,7 @@ namespace OCRLib
                 for (int x = rect.Left; x < rect.Right; x++)
                 {
                     Color clr = bmp.GetPixel(x, y);
-                    if (clr != Color.FromArgb(255, Color.White))
+                    if (clr != m_letterBkColor)
                     {
                         if (pt2 == Point.Empty)
                         {
@@ -468,13 +463,15 @@ namespace OCRLib
             {
                 int x = bmp.Width / 2;
                 Color clr = bmp.GetPixel(x, y);
-                if (clr.GetBrightness() > brightness_white)
+                //if (clr.GetBrightness() > brightness_white)
                 {
-                    brightness_white = clr.GetBrightness();
+                    brightness_white += clr.GetBrightness();
                 }
             }
 
-            brightness_white = brightness_white - (float)0.01;
+            brightness_white = brightness_white / bmp.Height;
+            
+            //brightness_white = brightness_white - (float)0.01;
 
             int top = 0;
             int bottom = bmp.Height - 1;
@@ -489,7 +486,7 @@ namespace OCRLib
                         line_empty_weight++;
                     }
                 }
-                if (line_empty_weight > bmp.Width / 2)
+                if (line_empty_weight > bmp.Width * 5 / 6)
                 {
                     top = y;
                     break;

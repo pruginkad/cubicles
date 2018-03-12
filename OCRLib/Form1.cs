@@ -192,20 +192,31 @@ namespace OCRLib
             arrAddLetters.Add("ri");
             CharRow row = recogn.Recognize("Print", arrAddLetters);
 
+            Pen pen = new Pen(new SolidBrush(Color.Red));
+            Pen pen_green = new Pen(new SolidBrush(Color.Green));
+            Pen pen_yell = new Pen(new SolidBrush(Color.Yellow));
+
+            pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
+            pen_green.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
+
+            Graphics gr = Graphics.FromImage(bmp_menu);
+            gr.DrawRectangle(pen_yell, recogn.m_cut_menu_rect);
+
             if (row != null)
             {
-                //Rectangle accRect = new Rectangle(0, bmp_menu.Height/3, bmp_menu.Width, bmp_menu.Height*2/3);
-                //if (accRect.Contains(row.m_rect))
+                 gr.DrawRectangle(pen_green, row.m_FullRect);
+            }
+            else
+            {
+                for (int i = 0; i < recogn.chars_row.Count; i++)
                 {
-                    Pen pen = new Pen(new SolidBrush(Color.Red));
-                    Pen pen_green = new Pen(new SolidBrush(Color.Green));
-
-                    pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
-                    pen_green.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
-
-                    Graphics gr = Graphics.FromImage(bmp_menu);
-                    gr.DrawRectangle(pen_green, row.m_FullRect);
-                }                
+                    CharRow letters = recogn.chars_row[i];
+                    for (int j = 0; j < letters.Count; j++)
+                    {
+                        CharRect letter = letters[j];
+                        gr.DrawRectangle(pen_green, letter.m_rect);
+                    }
+                }
             }
 
             //pictureBox1.Image = recogn.m_bw;
@@ -247,6 +258,7 @@ namespace OCRLib
 
         private void timer1_Tick(object sender, EventArgs e)
         {
+            return;
             POINT pt = new POINT() { x = Cursor.Position.X, y = Cursor.Position.Y };
             IntPtr curHwnd = WindowFromPoint(pt);
             if (curHwnd != IntPtr.Zero)

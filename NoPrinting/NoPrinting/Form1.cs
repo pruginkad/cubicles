@@ -213,9 +213,14 @@ namespace NoPrinting
             }
             
             Hook();
+#if !DEBUG
             TopMost = true;
             Visible = false;
             WindowState = FormWindowState.Minimized;
+#else
+            button2.Visible = true;
+            pictureBox1.Visible = true;
+#endif
         }
 
         void Hook()
@@ -258,7 +263,9 @@ namespace NoPrinting
 
         private void button1_Click(object sender, System.EventArgs e)
         {
+            #if !DEBUG
             Visible = false;
+            #endif
         }
 
         static bool OurProc(string process)
@@ -314,7 +321,7 @@ namespace NoPrinting
             int height = SystemFonts.MenuFont.Height * 3;//rc.Bottom- rc.Top;
             Bitmap bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
             Graphics.FromImage(bmp).CopyFromScreen(rc.Left,
-                                                   pt.y - height/2,
+                                                   pt.y - height / 2,
                                                    0,
                                                    0,
                                                    new Size(width, height),
@@ -348,21 +355,12 @@ namespace NoPrinting
 
                 if (m_bRightClickHappen && nCode >= 0 && MouseMessages.WM_LBUTTONUP == (MouseMessages)wParam)
                 {
-                    //Create a string variable that shows the current mouse coordinates.
-                    String strCaption = "x = " +
-                    MyMouseHookStruct.pt.x.ToString("d") +
-                    "  y = " +
-                    MyMouseHookStruct.pt.y.ToString("d");
-                    //You must get the active form because it is a static function.
                     Form tempForm = Application.OpenForms[0];
 
-                    //Set the caption of the form.
-                    //tempForm.Text = strCaption;
                     IntPtr curHwnd = WindowFromPoint(MyMouseHookStruct.pt);
                     if(curHwnd != IntPtr.Zero)
                     {
                         Bitmap bmp = GetWindowScreenshot(curHwnd, MyMouseHookStruct.pt);
-                        pictureBox1.Image = bmp;
                         if (FindPrintWord(bmp))
                         {
                             //SendMessage(curHwnd, WM_DESTROY, IntPtr.Zero, IntPtr.Zero);
@@ -423,20 +421,39 @@ namespace NoPrinting
 
             List<string> arrAddLetters = new List<string>();
             arrAddLetters.Add("ri");
+            arrAddLetters.Add("nt");
             CharRow row = recogn.Recognize("Print", arrAddLetters);
+
+            Pen pen = new Pen(new SolidBrush(Color.Red));
+            Pen pen_green = new Pen(new SolidBrush(Color.Green));
+
+            pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
+            pen_green.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
+
+            Graphics gr = Graphics.FromImage(bmp_menu);
+            gr.DrawRectangle(pen, recogn.m_cut_menu_rect);
 
             if (row != null)
             {
-                //Pen pen = new Pen(new SolidBrush(Color.Red));
-                //Pen pen_green = new Pen(new SolidBrush(Color.Green));
-
-                //pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
-                //pen_green.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
-
-                //Graphics gr = Graphics.FromImage(bmp_menu);
-                //gr.DrawRectangle(pen_green, row.m_FullRect);
+                gr.DrawRectangle(pen_green, row.m_FullRect);
+                pictureBox1.Image = bmp_menu;
                 return true;
             }
+            else
+            {
+                for (int i = 0; i < recogn.chars_row.Count; i++)
+                {
+                    CharRow letters = recogn.chars_row[i];
+                    for (int j = 0; j < letters.Count; j++)
+                    {
+                        CharRect letter = letters[j];
+                        gr.DrawRectangle(pen, letter.m_rect);
+                    }
+                }
+            }
+
+            
+            pictureBox1.Image = bmp_menu;
             return false;
         }
 
