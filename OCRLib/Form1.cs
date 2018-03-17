@@ -189,51 +189,74 @@ namespace OCRLib
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            Bitmap bmp_menu = new Bitmap(@"F:\menu_ie.bmp");
-            Recognize(bmp_menu);
+            try
+            {
+                Bitmap bmp_menu = new Bitmap(@"F:\menu_ie.bmp");
+                Recognize(bmp_menu);
+            }
+            catch
+            {
+
+            }
         }
 
-        void Recognize(Bitmap bmp_menu)
+        void Recognize(Bitmap bmp_menu_in)
         {
-            recogn.LoadBmp(bmp_menu, true);
+            Pen pen = new Pen(new SolidBrush(Color.Red));
+            Pen pen_green = new Pen(new SolidBrush(Color.Green));
+            Pen pen_yell = new Pen(new SolidBrush(Color.Yellow));
+            
+            pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
+            pen_green.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
 
             List<string> arrAddLetters = new List<string>();
             arrAddLetters.Add("Pr");
             arrAddLetters.Add("ri");
             arrAddLetters.Add("nt");
-            CharRow row = recogn.Recognize("Print", arrAddLetters);
 
-            Pen pen = new Pen(new SolidBrush(Color.Red));
-            Pen pen_green = new Pen(new SolidBrush(Color.Green));
-            Pen pen_yell = new Pen(new SolidBrush(Color.Yellow));
+            listBox1.Items.Clear();
+            Bitmap bmp_menu = null;
 
-            pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
-            pen_green.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
-
-            Graphics gr = Graphics.FromImage(bmp_menu);
-            gr.DrawRectangle(pen_yell, recogn.m_cut_menu_rect);
-            for (int i = 0; i < recogn.lines.Count; i++)
+            for (int k = 0; k < 2; k++)
             {
-                gr.DrawLine(pen_green, 0, recogn.lines[i], bmp_menu.Width - 1, recogn.lines[i]);
-            }
+                bmp_menu = bmp_menu_in.Clone(new Rectangle(0, 0, bmp_menu_in.Width, bmp_menu_in.Height), bmp_menu_in.PixelFormat);
+                Graphics gr = Graphics.FromImage(bmp_menu);
 
-            if (row != null)
-            {
-                gr.DrawRectangle(pen, row.m_FullRect);
-            }
-            else
-            {
-                for (int i = 0; i < recogn.chars_row.Count; i++)
+                recogn.LoadBmp(bmp_menu, k == 1);
+
+                CharRow row = recogn.Recognize("Print", arrAddLetters);
+
+
+                gr.DrawRectangle(pen_yell, recogn.m_cut_menu_rect);
+                for (int i = 0; i < recogn.lines.Count; i++)
                 {
-                    CharRow letters = recogn.chars_row[i];
-                    for (int j = 0; j < letters.Count; j++)
+                    gr.DrawLine(pen_green, 0, recogn.lines[i], bmp_menu.Width - 1, recogn.lines[i]);
+                }
+
+                if (row != null)
+                {
+                    gr.DrawRectangle(pen, row.m_FullRect);
+                    gr.Flush();
+                    break;
+                }
+                else
+                {
+                    string word = string.Empty;
+                    for (int i = 0; i < recogn.chars_row.Count; i++)
                     {
-                        CharRect letter = letters[j];
-                        gr.DrawRectangle(pen, letter.m_rect);
+                        CharRow letters = recogn.chars_row[i];
+                        for (int j = 0; j < letters.Count; j++)
+                        {
+                            CharRect letter = letters[j];
+                            gr.DrawRectangle(pen, letter.m_rect);
+
+                            word += letter.LetterString;
+                        }
+                        listBox1.Items.Add(word);
                     }
+                    gr.Flush();
                 }
             }
-
             //pictureBox1.Image = recogn.m_bw;
             pictureBox1.Image = bmp_menu;
         }
@@ -271,6 +294,7 @@ namespace OCRLib
             pictureBox2.Image = recogn.m_bmp_template;
             pictureBox3.Image = recogn.m_bmp_original;
 
+#if DEBUG
             if (recogn.m_bmp_template != null)
             {
                 recogn.m_bmp_template.Save(@"f:\bmp_template.bmp");
@@ -279,11 +303,12 @@ namespace OCRLib
             {
                 recogn.m_bmp_original.Save(@"f:\bmp_original.bmp");
             }            
+#endif
         }
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            return;
+            //return;
             POINT pt = new POINT() { x = Cursor.Position.X, y = Cursor.Position.Y };
             IntPtr curHwnd = WindowFromPoint(pt);
             if (curHwnd != IntPtr.Zero)
@@ -311,7 +336,7 @@ namespace OCRLib
                 //Graphics gr = Graphics.FromImage(bmp);
                 //gr.DrawRectangle(pen, rect);
                 //gr.DrawLine(new Pen(Color.YellowGreen), new Point(0, bmp.Height / 2), new Point(bmp.Width, bmp.Height / 2));
-                pictureBox1.Image = bmp;
+                //pictureBox1.Image = bmp;
             }
         }
     }

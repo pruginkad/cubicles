@@ -28,7 +28,7 @@ namespace OCRLib
                     }
                     else
                     {
-                        image.SetPixel(x, y, Color.Green);
+                        //image.SetPixel(x, y, Color.Green);
                     }
                 }
             }
@@ -275,7 +275,7 @@ namespace OCRLib
             }
         }
 
-        Bitmap CreateLetterTemplate(int w, string strPrint)
+        Bitmap CreateLetterTemplate(int w, string strPrint, Font font)
         {
             Bitmap printBmp = null;
             try
@@ -285,7 +285,6 @@ namespace OCRLib
 
                 Graphics g = Graphics.FromImage(printBmp);
                 g.FillRectangle(new SolidBrush(Color.White), rectf);
-                Font font = new Font(SystemFonts.MenuFont.FontFamily, 10);
 
                 font = GetAdjustedFont(g, strPrint, font, w, 12, 6, true);
                 g = Graphics.FromImage(printBmp);
@@ -323,9 +322,9 @@ namespace OCRLib
             return GetBlackAndWhiteImage(printBmp);
         }
 
-        Bitmap GetLetterRect(string str)
+        Bitmap GetLetterRect(string str, Font font)
         {
-            Bitmap bmp = CreateLetterTemplate(10, str);
+            Bitmap bmp = CreateLetterTemplate(10, str, font);
             Rectangle rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
             Point pt1 = Point.Empty;
             Point pt2 = Point.Empty;
@@ -397,63 +396,86 @@ namespace OCRLib
 
             List<string> arrLetters = the_word.Select(x => new string(x, 1)).ToList();
             arrLetters.AddRange(arrAddLetters);
+
             
-            List<Bitmap> list_templ = new List<Bitmap>();
-            for (int i = 0; i < arrLetters.Count; i++)
-            {
-                Bitmap temp = GetLetterRect(arrLetters[i]);
-                list_templ.Add(temp);
-            }
+            Font[] font = {
+                              new Font("Tahoma", 10), 
+                              new Font(SystemFonts.MenuFont.FontFamily, 10)
+                          };
 
-            for (int j = 0; j < chars_row.Count; j++)
-            {
-                string cur_word = string.Empty;
-                CharRow row = chars_row[j];
 
-                for (int i = 0; i < row.Count; i++)
+            for (int ff = 0; ff < font.Length; ff++)
+            {
+                List<LetterBitmapTemplate> list_templ = new List<LetterBitmapTemplate>();
+
+                for (int i = 0; i < arrLetters.Count; i++)
                 {
-                    float cur_res = 0;
-                    string cur_letter = string.Empty;
-
-                    CharRect char_rect = row[i];
-                    char_rect.m_weights.Clear();
-
-                    for (int l = 0; l < list_templ.Count; l++)
-                    {
-                        Bitmap bmp_templ = list_templ[l];
-
-
-                        Rectangle rect = char_rect.m_rect;
-                        if (rect.Width <= 1 || rect.Height <= 1)
-                        {
-                            continue;
-                        }
-                        
-                        if (pt_in != Point.Empty
-                            && !rect.Contains(pt_in)
-                            )
-                        {
-                            continue;
-                        }
-
-                        Bitmap bmp_orig = GetBWRect(rect, new Rectangle(0, 0, bmp_templ.Width, bmp_templ.Height));
-
-                        float result = Compare(bmp_templ, bmp_orig);
-                        char_rect.m_weights.Add(arrLetters[l], result);
-                        if (cur_res < result)
-                        {
-                            cur_res = result;
-                            cur_letter = arrLetters[l];
-                            m_bmp_original = bmp_orig;
-                            m_bmp_template = bmp_templ;
-                        }
-                        
-                    }
-                    cur_word += cur_letter;
+                    LetterBitmapTemplate temp = new LetterBitmapTemplate();
+                    temp.bmp = GetLetterRect(arrLetters[i], font[ff]);
+                    temp.LetterString = arrLetters[i];
+                    list_templ.Add(temp);
+                    //temp.bmp.Save(@"F:\templ_" + arrLetters[i] + "_.bmp");
                 }
-                if (cur_word.ToLower().Contains(the_word.ToLower()))
+            
+
+                for (int j = 0; j < chars_row.Count; j++)
                 {
-                    return row;
+                    string cur_word = string.Empty;
+                    CharRow row = chars_row[j];
+
+                    for (int i = 0; i < row.Count; i++)
+                    {
+                        float cur_res = 0;
+                        string cur_letter = string.Empty;
+
+                        CharRect char_rect = row[i];
+                        char_rect.m_weights.Clear();
+
+                        for (int l = 0; l < list_templ.Count; l++)
+                        {
+                            Bitmap bmp_templ = list_templ[l].bmp;
+
+
+                            Rectangle rect = char_rect.m_rect;
+                            if (rect.Width <= 1 || rect.Height <= 1)
+                            {
+                                continue;
+                            }
+                        
+                            if (pt_in != Point.Empty
+                                && !rect.Contains(pt_in)
+                                )
+                            {
+                                continue;
+                            }
+
+                            Bitmap bmp_orig = GetBWRect(rect, new Rectangle(0, 0, bmp_templ.Width, bmp_templ.Height));
+
+                            if(pt_in != Point.Empty)
+                            {
+                                #if DEBUG
+                                bmp_orig.Save(@"F:\orig_" + arrLetters[l] + "_.bmp");
+                                #endif
+                            }
+                            float result = Compare(bmp_templ, bmp_orig);
+                            char_rect.m_weights[list_templ[l].LetterString] = result;
+                            if (cur_res < result)
+                            {
+                                cur_res = result;
+                                cur_letter = list_templ[l].LetterString;
+                                char_rect.LetterString = cur_letter;
+
+                                m_bmp_original = bmp_orig;
+                                m_bmp_template = bmp_templ;
+                            }
+                        
+                        }
+                        cur_word += cur_letter;
+                    }
+                    if (cur_word.ToLower().Contains(the_word.ToLower()))
+                    {
+                        return row;
+                    }
                 }
             }
             return null;

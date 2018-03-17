@@ -17,6 +17,7 @@ namespace OCRLib
             get;
             set;
         }
+        public string LetterString = string.Empty;
 
         public Dictionary<string, float> m_weights = new Dictionary<string, float>();
     }
@@ -35,5 +36,15 @@ namespace OCRLib
             get;
             set;
         }
+    }
+
+    public class LetterBitmapTemplate
+    {
+        public Bitmap bmp
+        {
+            get;
+            set;
+        }
+        public string LetterString = string.Empty;
     }
 }
