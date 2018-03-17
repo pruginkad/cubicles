@@ -317,15 +317,21 @@ namespace NoPrinting
             RECT rc;
             GetWindowRect(hwnd, out rc);
 
+
             int width = rc.Right - rc.Left;
             int height = SystemFonts.MenuFont.Height * 3;//rc.Bottom- rc.Top;
+            int top = Math.Max(pt.y - height / 2, rc.Top);
+            int bottom = Math.Min(top + height, rc.Bottom);
+            height = bottom - top;
+
             Bitmap bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
             Graphics.FromImage(bmp).CopyFromScreen(rc.Left,
-                                                   pt.y - height / 2,
+                                                   top,
                                                    0,
                                                    0,
                                                    new Size(width, height),
                                                    CopyPixelOperation.SourceCopy);
+
             return bmp;
         }
 
@@ -415,44 +421,65 @@ namespace NoPrinting
 
         Recognizer recogn = new Recognizer();
 
-        bool FindPrintWord(Bitmap bmp_menu)
+        bool FindPrintWord(Bitmap bmp_menu_in)
         {
-            recogn.LoadBmp(bmp_menu);
-
-            List<string> arrAddLetters = new List<string>();
-            arrAddLetters.Add("ri");
-            arrAddLetters.Add("nt");
-            CharRow row = recogn.Recognize("Print", arrAddLetters);
-
             Pen pen = new Pen(new SolidBrush(Color.Red));
             Pen pen_green = new Pen(new SolidBrush(Color.Green));
+            Pen pen_yell = new Pen(new SolidBrush(Color.Yellow));
 
             pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
             pen_green.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
 
-            Graphics gr = Graphics.FromImage(bmp_menu);
-            gr.DrawRectangle(pen, recogn.m_cut_menu_rect);
+            List<string> arrAddLetters = new List<string>();
+            arrAddLetters.Add("Pr");
+            arrAddLetters.Add("ri");
+            arrAddLetters.Add("nt");
 
-            if (row != null)
+            //listBox1.Items.Clear();
+            Bitmap bmp_menu = null;
+
+            for (int k = 0; k < 2; k++)
             {
-                gr.DrawRectangle(pen_green, row.m_FullRect);
-                pictureBox1.Image = bmp_menu;
-                return true;
-            }
-            else
-            {
-                for (int i = 0; i < recogn.chars_row.Count; i++)
+                bmp_menu = bmp_menu_in.Clone(new Rectangle(0, 0, bmp_menu_in.Width, bmp_menu_in.Height), bmp_menu_in.PixelFormat);
+                Graphics gr = Graphics.FromImage(bmp_menu);
+
+                recogn.LoadBmp(bmp_menu, k == 1);
+
+                CharRow row = recogn.Recognize("Print", arrAddLetters);
+
+
+                gr.DrawRectangle(pen_yell, recogn.m_cut_menu_rect);
+                for (int i = 0; i < recogn.lines.Count; i++)
                 {
-                    CharRow letters = recogn.chars_row[i];
-                    for (int j = 0; j < letters.Count; j++)
+                    gr.DrawLine(pen_green, 0, recogn.lines[i], bmp_menu.Width - 1, recogn.lines[i]);
+                }
+
+                if (row != null)
+                {
+                    gr.DrawRectangle(pen, row.m_FullRect);
+                    gr.Flush();
+                    pictureBox1.Image = bmp_menu;
+                    return true;
+                }
+                else
+                {
+                    string word = string.Empty;
+                    for (int i = 0; i < recogn.chars_row.Count; i++)
                     {
-                        CharRect letter = letters[j];
-                        gr.DrawRectangle(pen, letter.m_rect);
+                        CharRow letters = recogn.chars_row[i];
+                        for (int j = 0; j < letters.Count; j++)
+                        {
+                            CharRect letter = letters[j];
+                            gr.DrawRectangle(pen, letter.m_rect);
+
+                            word += letter.LetterString;
+                        }
+                        //listBox1.Items.Add(word);
                     }
+                    gr.Flush();
                 }
             }
-
-            
+            //pictureBox1.Image = recogn.m_bw;
             pictureBox1.Image = bmp_menu;
             return false;
         }
