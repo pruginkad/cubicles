@@ -159,20 +159,29 @@ namespace OCRLib
         [DllImport("user32.dll")]
         public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+        [DllImport("user32.dll")]
+        static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
+
         private Bitmap GetWindowScreenshot(IntPtr hwnd, POINT pt)
         {
             RECT rc;
             GetWindowRect(hwnd, out rc);
 
+            
             int width = rc.Right - rc.Left;
             int height = SystemFonts.MenuFont.Height * 3;//rc.Bottom- rc.Top;
+            int top = Math.Max(pt.y - height / 2, rc.Top);
+            int bottom = Math.Min(top+height, rc.Bottom);
+            height = bottom - top;
+
             Bitmap bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
             Graphics.FromImage(bmp).CopyFromScreen(rc.Left,
-                                                   pt.y - height / 2,
+                                                   top,
                                                    0,
                                                    0,
                                                    new Size(width, height),
                                                    CopyPixelOperation.SourceCopy);
+
             return bmp;
         }
 
@@ -186,10 +195,12 @@ namespace OCRLib
 
         void Recognize(Bitmap bmp_menu)
         {
-            recogn.LoadBmp(bmp_menu);
+            recogn.LoadBmp(bmp_menu, true);
 
             List<string> arrAddLetters = new List<string>();
+            arrAddLetters.Add("Pr");
             arrAddLetters.Add("ri");
+            arrAddLetters.Add("nt");
             CharRow row = recogn.Recognize("Print", arrAddLetters);
 
             Pen pen = new Pen(new SolidBrush(Color.Red));
@@ -201,10 +212,14 @@ namespace OCRLib
 
             Graphics gr = Graphics.FromImage(bmp_menu);
             gr.DrawRectangle(pen_yell, recogn.m_cut_menu_rect);
+            for (int i = 0; i < recogn.lines.Count; i++)
+            {
+                gr.DrawLine(pen_green, 0, recogn.lines[i], bmp_menu.Width - 1, recogn.lines[i]);
+            }
 
             if (row != null)
             {
-                 gr.DrawRectangle(pen_green, row.m_FullRect);
+                gr.DrawRectangle(pen, row.m_FullRect);
             }
             else
             {
@@ -214,7 +229,7 @@ namespace OCRLib
                     for (int j = 0; j < letters.Count; j++)
                     {
                         CharRect letter = letters[j];
-                        gr.DrawRectangle(pen_green, letter.m_rect);
+                        gr.DrawRectangle(pen, letter.m_rect);
                     }
                 }
             }
@@ -246,14 +261,24 @@ namespace OCRLib
             Point coordinates = me.Location;
 
             Point clck = GetClick();
-            Bitmap templ = null;
-            Bitmap orig = null;
-            recogn.RecognizeByPoint(clck,"ri", out templ, out orig);
-            pictureBox2.Image = templ;
-            pictureBox3.Image = orig;
+            
+            List<string> arrAddLetters = new List<string>();
+            //arrAddLetters.Add("Pr");
+            //arrAddLetters.Add("ri");
+            //arrAddLetters.Add("nt");
+            CharRow row = recogn.Recognize("Print", arrAddLetters, clck);
 
-            templ.Save(@"F:\bmp_templ.bmp");
-            orig.Save(@"F:\bmp_orig.bmp");
+            pictureBox2.Image = recogn.m_bmp_template;
+            pictureBox3.Image = recogn.m_bmp_original;
+
+            if (recogn.m_bmp_template != null)
+            {
+                recogn.m_bmp_template.Save(@"f:\bmp_template.bmp");
+            }
+            if (recogn.m_bmp_original != null)
+            {
+                recogn.m_bmp_original.Save(@"f:\bmp_original.bmp");
+            }            
         }
 
         private void timer1_Tick(object sender, EventArgs e)
@@ -265,7 +290,22 @@ namespace OCRLib
             {
                 Bitmap bmp = GetWindowScreenshot(curHwnd, pt);
                 
+                
                 Recognize(bmp);
+
+                ScreenToClient(curHwnd, ref pt);
+                try
+                {
+                    Color clr = bmp.GetPixel(pt.x, bmp.Height / 2);
+                    float bright = clr.GetBrightness();
+                    Text = bright.ToString() + "---" + recogn.brightness_white.ToString();
+                }
+                catch
+                {
+
+                }
+                
+
                 //Pen pen = new Pen(new SolidBrush(Color.Red));
                 //pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dot;
                 //Graphics gr = Graphics.FromImage(bmp);

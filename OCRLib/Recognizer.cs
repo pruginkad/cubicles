@@ -5,6 +5,8 @@ using System.Text;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
+using System.Drawing.Imaging;
+using System.Diagnostics;
 
 namespace OCRLib
 {
@@ -26,13 +28,46 @@ namespace OCRLib
                     }
                     else
                     {
-                        //image.SetPixel(x, y, Color.Green);
+                        image.SetPixel(x, y, Color.Green);
                     }
                 }
             }
             float ret = overlap / total;
             return ret;
         }
+
+        public Bitmap TransformNegative(Bitmap source)
+        {
+            //create a blank bitmap the same size as original
+            Bitmap newBitmap = new Bitmap(source.Width, source.Height);
+
+            //get a graphics object from the new image
+            Graphics g = Graphics.FromImage(newBitmap);
+
+            // create the negative color matrix
+            ColorMatrix colorMatrix = new ColorMatrix(new float[][]
+                {
+                    new float[] {-1, 0, 0, 0, 0},
+                    new float[] {0, -1, 0, 0, 0},
+                    new float[] {0, 0, -1, 0, 0},
+                    new float[] {0, 0, 0, 1, 0},
+                    new float[] {1, 1, 1, 0, 1}
+                });
+
+            // create some image attributes
+            ImageAttributes attributes = new ImageAttributes();
+
+            attributes.SetColorMatrix(colorMatrix);
+
+            g.DrawImage(source, new Rectangle(0, 0, source.Width, source.Height),
+                        0, 0, source.Width, source.Height, GraphicsUnit.Pixel, attributes);
+
+            //dispose the Graphics object
+            g.Dispose();
+
+            return newBitmap;
+        }
+
         public static Bitmap GetBlackAndWhiteImage(Bitmap SourceImage)
         {
             Bitmap bmp = new Bitmap(SourceImage.Width, SourceImage.Height);
@@ -64,13 +99,19 @@ namespace OCRLib
         public List<CharRow> chars_row = new List<CharRow>();
 
         public Color m_letterBkColor = Color.FromArgb(255, Color.White);
-        public void LoadBmp(Bitmap bmp_menu)
+        public void LoadBmp(Bitmap bmp_menu, bool invert = false)
         {
             m_cut_menu_rect = new Rectangle(0, 0, bmp_menu.Width, bmp_menu.Height);
             m_cut_menu_rect = CutMenuItem(bmp_menu);
+            m_cut_menu_rect.Inflate(-10, 0);
 
             chars_row.Clear();
             m_bw = GetBlackAndWhiteImage(bmp_menu);
+            if (invert)
+            {
+                m_bw = TransformNegative(m_bw);
+            }
+            
 
             int row_start_end = 0;
 
@@ -191,12 +232,13 @@ namespace OCRLib
                         }
                     }
 
-                    if (pt1.X > 0) pt1.X--;
-                    if (pt1.X < m_bw.Width) pt2.X++;
+                    {
+                        if (pt1.X > 0) pt1.X--;
+                        if (pt2.X < m_bw.Width) pt2.X++;
 
-
-                    if (pt1.Y > 0) pt1.Y--;
-                    if (pt1.X < m_bw.Height) pt2.Y++;
+                        if (pt1.Y > 0) pt1.Y--;
+                        if (pt2.Y < m_bw.Height) pt2.Y++;
+                    }                    
 
                     row[i].m_rect = Rectangle.FromLTRB(pt1.X, pt1.Y, pt2.X, pt2.Y);
                     Rectangle temp = Rectangle.FromLTRB(pt1.X, pt1.Y, pt2.X, pt2.Y);
@@ -249,7 +291,7 @@ namespace OCRLib
                 g = Graphics.FromImage(printBmp);
 
                 // The smoothing mode specifies whether lines, curves, and the edges of filled areas use smoothing (also called antialiasing). One exception is that path gradient brushes do not obey the smoothing mode. Areas filled using a PathGradientBrush are rendered the same way (aliased) regardless of the SmoothingMode property.
-                //g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
 
                 // The interpolation mode determines how intermediate values between two endpoints are calculated.
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
@@ -313,13 +355,14 @@ namespace OCRLib
                 }
             }
 
+            {
+                if (pt1.X > 0) pt1.X--;
+                if (pt2.X < bmp.Width) pt2.X++;
 
-            if (pt1.X > 0) pt1.X--;
-            if (pt1.X < bmp.Width) pt2.X++;
-
-
-            if (pt1.Y > 0) pt1.Y--;
-            if (pt1.X < bmp.Height) pt2.Y++;
+                if (pt1.Y > 0) pt1.Y--;
+                if (pt2.Y < bmp.Height) pt2.Y++;
+            }
+            
 
             Rectangle temp = Rectangle.FromLTRB(pt1.X, pt1.Y, pt2.X, pt2.Y);
 
@@ -341,8 +384,14 @@ namespace OCRLib
             return GetBlackAndWhiteImage(bmp_orig);
         }
 
-        public CharRow Recognize(string the_word, List<string> arrAddLetters)
+
+        public Bitmap m_bmp_template = null;
+        public Bitmap m_bmp_original = null;
+
+        public CharRow Recognize(string the_word, List<string> arrAddLetters, Point pt_in = default(Point))
         {
+            m_bmp_template = null;
+            m_bmp_original = null;
             //Graphics gr = Graphics.FromImage(bmp_menu);
             //listBox1.Items.Clear();
 
@@ -352,7 +401,8 @@ namespace OCRLib
             List<Bitmap> list_templ = new List<Bitmap>();
             for (int i = 0; i < arrLetters.Count; i++)
             {
-                list_templ.Add(GetLetterRect(arrLetters[i]));
+                Bitmap temp = GetLetterRect(arrLetters[i]);
+                list_templ.Add(temp);
             }
 
             for (int j = 0; j < chars_row.Count; j++)
@@ -378,15 +428,15 @@ namespace OCRLib
                         {
                             continue;
                         }
-                        //if (pt != Point.Empty
-                        //    && !rect.Contains(pt)
-                        //    )
-                        //{
-                        //    continue;
-                        //}
+                        
+                        if (pt_in != Point.Empty
+                            && !rect.Contains(pt_in)
+                            )
+                        {
+                            continue;
+                        }
 
                         Bitmap bmp_orig = GetBWRect(rect, new Rectangle(0, 0, bmp_templ.Width, bmp_templ.Height));
-
 
                         float result = Compare(bmp_templ, bmp_orig);
                         char_rect.m_weights.Add(arrLetters[l], result);
@@ -394,6 +444,8 @@ namespace OCRLib
                         {
                             cur_res = result;
                             cur_letter = arrLetters[l];
+                            m_bmp_original = bmp_orig;
+                            m_bmp_template = bmp_templ;
                         }
                         
                     }
@@ -407,109 +459,70 @@ namespace OCRLib
             return null;
         }
         
-        public CharRow RecognizeByPoint(Point pt, string the_word, out Bitmap templ, out Bitmap orig)
-        {
-            //Graphics gr = Graphics.FromImage(bmp_menu);
-            //listBox1.Items.Clear();
+        public float brightness_white = 0;
 
-            string[] arrLetters = the_word.Select(x => new string(x, 1)).ToArray();
+        public List<int> lines = new List<int>();
 
-
-            Bitmap bmp_templ = GetLetterRect(the_word);
-
-            templ = bmp_templ;
-
-            for (int j = 0; j < chars_row.Count; j++)
-            {
-                CharRow row = chars_row[j];
-
-                for (int i = 0; i < row.Count; i++)
-                {
-                    string cur_letter = string.Empty;
-
-                    CharRect char_rect = row[i];
-                    char_rect.m_weights.Clear();
-
-
-                    Rectangle rect = char_rect.m_rect;
-                    if (rect.Width <= 1 || rect.Height <= 1)
-                    {
-                        continue;
-                    }
-                    if (pt != Point.Empty
-                        && !rect.Contains(pt)
-                        )
-                    {
-                        continue;
-                    }
-
-                    Bitmap bmp_orig = GetBWRect(rect, new Rectangle(0, 0, bmp_templ.Width, bmp_templ.Height));
-                    orig = bmp_orig;
-
-                    float result = Compare(bmp_templ, bmp_orig);
-                    return row;
-                }
-
-            }
-            orig = null;
-            return null;
-        }
-        
         public Rectangle CutMenuItem(Bitmap bmp)
         {
-            float brightness_white = (float)0.0;
-            //Cut Selection
+            float prev_brightness = (float)0.0;
+            int prev_len = 0;
+            lines.Clear();
+            
+            lines.Add(0);
+
             for (int y = 0; y < bmp.Height; y++)
             {
-                int x = bmp.Width / 2;
-                Color clr = bmp.GetPixel(x, y);
-                //if (clr.GetBrightness() > brightness_white)
+                float line_brightness = 0;
+                int max_len = 0;
+                int cur_len = 0;
+                
+                Color prev_clr = new Color();
+                for (int x = 0; x < bmp.Width; x++)
                 {
-                    brightness_white += clr.GetBrightness();
+                    Color clr = bmp.GetPixel(x, y);
+                    if (clr == prev_clr)
+                    {
+                        cur_len++;
+                        if (max_len < cur_len)
+                        {
+                            max_len = cur_len;
+                        }
+                    }
+                    else
+                    {
+                        cur_len = 0;
+                    }
+                    prev_clr = clr;
+                    line_brightness += clr.GetBrightness();
                 }
+
+                line_brightness = line_brightness / bmp.Width;
+                float w = ((float)bmp.Width) * 5.0f / 6.0f;
+                float coef = Math.Abs(prev_brightness - line_brightness);
+                if (coef > 0.05f && max_len > w  && prev_len > w)
+                {
+                    Debug.Print(y.ToString());
+                    lines.Add(y);
+                }
+                prev_len = max_len;
+                prev_brightness = line_brightness;
             }
-
-            brightness_white = brightness_white / bmp.Height;
-            
-            //brightness_white = brightness_white - (float)0.01;
-
+            Debug.Print("-------------------------------");
             int top = 0;
-            int bottom = bmp.Height - 1;
-            for (int y = bmp.Height / 2; y >= 0; y--)
+            int bottom = bmp.Height-1;
+            int max_h = 0;
+            for (int i = 1; i < lines.Count; i++)
             {
-                int line_empty_weight = 0;
-                for (int x = 0; x < bmp.Width; x++)
+                int h = lines[i] - lines[i - 1];
+                if (max_h < h)
                 {
-                    Color clr = bmp.GetPixel(x, y);
-                    if (clr.GetBrightness() > brightness_white)
-                    {
-                        line_empty_weight++;
-                    }
-                }
-                if (line_empty_weight > bmp.Width * 5 / 6)
-                {
-                    top = y;
-                    break;
+                    max_h = h;
+                    top = lines[i - 1];
+                    bottom = lines[i];
                 }
             }
 
-            for (int y = bmp.Height / 2; y < bmp.Height; y++)
-            {
-                int line_empty_weight = 0;
-                for (int x = 0; x < bmp.Width; x++)
-                {
-                    Color clr = bmp.GetPixel(x, y);
-                    if (clr.GetBrightness() > brightness_white)
-                    {
-                        line_empty_weight++;
-                    }
-                }
-                if (line_empty_weight > bmp.Width * 5 / 6)
-                {
-                    bottom = y;
-                    break;
-                }
-            }
             Rectangle rect = Rectangle.FromLTRB(0, top, bmp.Width, bottom);
             if (rect.Height < 2)
             {
