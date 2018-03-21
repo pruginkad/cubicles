@@ -192,7 +192,7 @@ namespace OCRLib
             try
             {
                 Bitmap bmp_menu = new Bitmap(@"F:\menu_ie.bmp");
-                Recognize(bmp_menu);
+                FindPrintWord(bmp_menu);
             }
             catch
             {
@@ -200,7 +200,7 @@ namespace OCRLib
             }
         }
 
-        void Recognize(Bitmap bmp_menu_in)
+        bool FindPrintWord(Bitmap bmp_menu_in)
         {
             Pen pen = new Pen(new SolidBrush(Color.Red));
             Pen pen_green = new Pen(new SolidBrush(Color.Green));
@@ -237,7 +237,8 @@ namespace OCRLib
                 {
                     gr.DrawRectangle(pen, row.m_FullRect);
                     gr.Flush();
-                    break;
+                    pictureBox1.Image = bmp_menu;
+                    return true;
                 }
                 else
                 {
@@ -259,6 +260,7 @@ namespace OCRLib
             }
             //pictureBox1.Image = recogn.m_bw;
             pictureBox1.Image = bmp_menu;
+            return false;
         }
 
         Point GetClick()
@@ -314,9 +316,9 @@ namespace OCRLib
             if (curHwnd != IntPtr.Zero)
             {
                 Bitmap bmp = GetWindowScreenshot(curHwnd, pt);
-                
-                
-                Recognize(bmp);
+
+
+                FindPrintWord(bmp);
 
                 ScreenToClient(curHwnd, ref pt);
                 try
