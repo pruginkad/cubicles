@@ -128,6 +128,8 @@ namespace WpfNoPrinting
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
 
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
 
         [DllImport("user32.dll")]
         static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
@@ -220,9 +222,12 @@ namespace WpfNoPrinting
             WM_RBUTTONUP = 0x0205
         }
 
+        static IntPtr m_ForeGrowndhWnd = IntPtr.Zero;
+
         static  string GetActiveProcessName()
         {
-            return GetWindowModuleFileName(GetForegroundWindow());
+            m_ForeGrowndhWnd = GetForegroundWindow();
+            return GetWindowModuleFileName(m_ForeGrowndhWnd);
             //uint processID = 0;
             //IntPtr threadID = GetWindowThreadProcessId(GetForegroundWindow(), out processID);
             //StringBuilder exePath = new StringBuilder(1024);
@@ -295,6 +300,9 @@ namespace WpfNoPrinting
         const int WM_SYSKEYDOWN = 0x0104;
         const int WM_DESTROY = 0x0002;
 
+        static int m_nCode;
+        static KBDLLHOOKSTRUCT m_kbd;
+        static IntPtr m_wParam;
         public static int KbHookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
         {
             //Marshall the data from the callback.
@@ -309,6 +317,9 @@ namespace WpfNoPrinting
                         if(OurProc(process))
                         {
                             Application.Current.MainWindow.Visibility = Visibility.Visible;
+                            m_wParam = wParam;
+                            m_kbd = kbd;
+                            m_nCode = nCode;
                             return 1;
                         }
                     }
@@ -510,9 +521,42 @@ namespace WpfNoPrinting
             }  
         }
 
+        internal enum INPUT_TYPE : uint
+        {
+            INPUT_MOUSE = 0,
+            INPUT_KEYBOARD = 1,
+            INPUT_HARDWARE = 2
+        }
+
+        [DllImport("user32.dll")]
+        internal static extern uint SendInput(uint nInputs,
+           [MarshalAs(UnmanagedType.LPArray), In] INPUT[] pInputs,
+           int cbSize);
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern void keybd_event(byte bVk, byte bScan, int dwFlags, int dwExtraInfo);
+
+        public const int KEYEVENTF_EXTENDEDKEY = 0x0001; //Key down flag
+        public const int KEYEVENTF_KEYUP = 0x0002; //Key up flag
+        public const int VK_LCONTROL = 0xA2; //Left Control key code
+        public const int P = 80; //P key code
+
+        public static void PressKeys()
+        {
+            keybd_event(VK_LCONTROL, 0, KEYEVENTF_EXTENDEDKEY, 0);
+            keybd_event(P, 0, KEYEVENTF_EXTENDEDKEY, 0);
+            keybd_event(P, 0, KEYEVENTF_KEYUP, 0);
+            keybd_event(VK_LCONTROL, 0, KEYEVENTF_KEYUP, 0);
+        }
+
         private void button2_Click(object sender, RoutedEventArgs e)
         {
+            this.Visibility = System.Windows.Visibility.Hidden;
+            Unhook();
 
+            SetForegroundWindow(m_ForeGrowndhWnd);
+            PressKeys();
+
+            Hook();
         }
     }
 }

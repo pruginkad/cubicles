@@ -92,6 +92,7 @@
     </ApplicationDefinition>
     <Compile Include="Recognizer.cs" />
     <Compile Include="RECT.cs" />
+    <Compile Include="SendInputWrapper.cs" />
     <Compile Include="WindowHandleInfo.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
