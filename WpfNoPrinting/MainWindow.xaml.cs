@@ -392,7 +392,7 @@ namespace WpfNoPrinting
                             Application.Current.MainWindow.Visibility = System.Windows.Visibility.Visible;
                             return 1;
                         }
-                                             
+                        bmp.Save(System.AppDomain.CurrentDomain.BaseDirectory + @"Current.bmp");
                     }
                     else
                     {
