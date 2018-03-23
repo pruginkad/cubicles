@@ -34,12 +34,9 @@ namespace WpfNoPrinting
 
             Hook();
 #if !DEBUG
-            TopMost = true;
-            Visible = false;
-            WindowState = FormWindowState.Minimized;
+
 #else
-            //button2.Visible = true;
-            //pictureBox1.Visible = true;
+
 #endif
         }
 
@@ -280,7 +277,7 @@ namespace WpfNoPrinting
         private void button1_Click(object sender, System.EventArgs e)
         {
             #if !DEBUG
-            Visible = false;
+            Application.Current.MainWindow.Visibility = Visibility.Hidden;
             #endif
         }
 
