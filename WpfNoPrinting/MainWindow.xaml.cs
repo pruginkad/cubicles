@@ -223,8 +223,8 @@ namespace WpfNoPrinting
 
         static  string GetActiveProcessName()
         {
-            m_ForeGrowndhWnd = GetForegroundWindow();
-            return GetWindowModuleFileName(m_ForeGrowndhWnd);
+            IntPtr ForeGrowndhWnd = GetForegroundWindow();
+            return GetWindowModuleFileName(ForeGrowndhWnd);
             //uint processID = 0;
             //IntPtr threadID = GetWindowThreadProcessId(GetForegroundWindow(), out processID);
             //StringBuilder exePath = new StringBuilder(1024);
@@ -313,6 +313,7 @@ namespace WpfNoPrinting
                         string process = GetActiveProcessName();
                         if(OurProc(process))
                         {
+                            m_ForeGrowndhWnd = GetForegroundWindow();
                             Application.Current.MainWindow.Visibility = Visibility.Visible;
                             m_wParam = wParam;
                             m_kbd = kbd;
@@ -372,6 +373,7 @@ namespace WpfNoPrinting
                         if (OurProc(process))
                         {
                             m_bRightClickHappen = true;
+                            m_ForeGrowndhWnd = GetForegroundWindow();
                         }
                     }
                     
@@ -549,7 +551,6 @@ namespace WpfNoPrinting
         {
             this.Visibility = System.Windows.Visibility.Hidden;
             Unhook();
-
             SetForegroundWindow(m_ForeGrowndhWnd);
             PressKeys();
 
