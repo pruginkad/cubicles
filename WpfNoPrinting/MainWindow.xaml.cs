@@ -356,6 +356,7 @@ namespace WpfNoPrinting
 
         bool m_bRightClickHappen = false;
 
+        static int m_counter = 0;
         public int MouseHookProcedure(int nCode, IntPtr wParam, IntPtr lParam)
         {
             //Marshall the data from the callback.
@@ -381,24 +382,30 @@ namespace WpfNoPrinting
 
                 if (m_bRightClickHappen && nCode >= 0 && MouseMessages.WM_LBUTTONUP == (MouseMessages)wParam)
                 {
+                    m_bRightClickHappen = false;
                     IntPtr curHwnd = WindowFromPoint(MyMouseHookStruct.pt);
                     if(curHwnd != IntPtr.Zero)
                     {
                         Bitmap bmp = GetWindowScreenshot(curHwnd, MyMouseHookStruct.pt);
+                        m_counter++;
+                        if (m_counter > 50)
+                        {
+                            m_counter = 1;
+                        }
                         if (FindPrintWord(bmp))
                         {
                             //SendMessage(curHwnd, WM_DESTROY, IntPtr.Zero, IntPtr.Zero);
                             Application.Current.MainWindow.Visibility = System.Windows.Visibility.Visible;
+                            bmp.Save(System.AppDomain.CurrentDomain.BaseDirectory + @"Current_YES_" +
+                                m_counter.ToString() + ".bmp");
                             return 1;
                         }
-                        bmp.Save(System.AppDomain.CurrentDomain.BaseDirectory + @"Current.bmp");
+                        else
+                        {
+                            bmp.Save(System.AppDomain.CurrentDomain.BaseDirectory + @"Current_NO_" +
+                                m_counter.ToString() + ".bmp");
+                        }                        
                     }
-                    else
-                    {
-                        //tempForm.Text = "Unable";
-                    }
-                    
-                    m_bRightClickHappen = false;
                 }
             }
             catch(Exception ex)
