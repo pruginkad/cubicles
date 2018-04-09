@@ -243,7 +243,7 @@ namespace WpfNoPrinting
 
             if (hHook == 0)
             {
-                MessageBox.Show("SetWindowsHookEx WH_KEYBOARD_LL Failed");
+                //MessageBox.Show("SetWindowsHookEx WH_KEYBOARD_LL Failed");
             }
 
             MouseHookProcedureDelegate = new HookProc(this.MouseHookProcedure);
@@ -251,7 +251,7 @@ namespace WpfNoPrinting
 
             if (hMouseHook == 0)
             {
-                MessageBox.Show("SetWindowsHookEx WH_MOUSE_LL Failed");
+                //MessageBox.Show("SetWindowsHookEx WH_MOUSE_LL Failed");
             }
 
         }
@@ -269,7 +269,7 @@ namespace WpfNoPrinting
             ret = UnhookWindowsHookEx(hMouseHook);
             if (ret == false)
             {
-                MessageBox.Show("UnhookWindowsHookEx Failed");
+                //MessageBox.Show("UnhookWindowsHookEx Failed");
             }
             hMouseHook = 0;
         }
