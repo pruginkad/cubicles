@@ -148,8 +148,7 @@ int TestOUEnem()
 	HRESULT hr;
 	///////////////IDirectorySearch///////////////////////////////////////////////////////////
 	CComPtr<IDirectorySearch> pDSSearch;
-
-
+	
 	hr = ADsGetObject( L"LDAP://DC=forest,DC=internal", 
 		IID_IDirectorySearch, 
 		(void**) &pDSSearch );
