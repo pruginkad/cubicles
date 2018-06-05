@@ -4,6 +4,9 @@
 #include "stdafx.h"
 #include "activeds.h"
 #include "atlbase.h"
+#include <string>
+#include <sstream>
+#include <iostream>  
 
 #pragma comment(lib, "Activeds.lib")
 #pragma comment(lib, "Adsiid.lib")
@@ -143,13 +146,26 @@ int TestSearchDir()
 	///////////////IDirectorySearch///////////////////////////////////////////////////////////
 	return 1;
 }
+
+std::string strFromHex(BYTE* data, int length)
+{
+   std::stringstream ss;
+
+   ss << std::hex;
+
+   for( size_t i=0;i != length; ++i )
+      ss << (size_t)data[i];
+
+   return ss.str();
+} 
+
 int TestOUEnem()
 {
 	HRESULT hr;
 	///////////////IDirectorySearch///////////////////////////////////////////////////////////
 	CComPtr<IDirectorySearch> pDSSearch;
 	
-	hr = ADsGetObject( L"LDAP://DC=forest,DC=internal", 
+	hr = ADsGetObject( L"LDAP://OU=OUnit_Main,DC=forest,DC=internal", 
 		IID_IDirectorySearch, 
 		(void**) &pDSSearch );
 
@@ -158,7 +174,7 @@ int TestOUEnem()
 		return 0;
 	}
 
-	LPWSTR pszAttr[] = { L"description", L"Name", L"distinguishedname" };
+	LPWSTR pszAttr[] = { L"description", L"Name", L"distinguishedname", L"objectGUID" };
 	ADS_SEARCH_HANDLE hSearch;
 	DWORD dwCount = 0;
 	ADS_SEARCH_COLUMN col;
@@ -193,17 +209,41 @@ int TestOUEnem()
 	{
 		// Get the property.
 		hr = pDSSearch->GetColumn( hSearch, L"distinguishedname", &col );
-
+		
 		// If this object supports this attribute, display it.
 		if ( SUCCEEDED(hr) )
 		{ 
 			if (col.dwADsType == ADSTYPE_CASE_IGNORE_STRING)
+			{
 				wprintf(L"The description property:%s\r\n", col.pADsValues->CaseIgnoreString); 
+			}
+			std::wstring ws(col.pADsValues->DNString);
+			// your new String
+			std::string str(ws.begin(), ws.end());
+			// Show String
+			std::cout << str << std::endl;
+
 			pDSSearch->FreeColumn( &col );
 		}
 		else
+		{
 			puts("description property NOT available");
+		}
+
+		hr = pDSSearch->GetColumn( hSearch, L"objectGUID", &col );
+		if ( SUCCEEDED(hr) )
+		{ 
+			std::string guid;
+			if (col.dwADsType == ADSTYPE_OCTET_STRING )
+			{
+				guid = strFromHex( col.pADsValues[0].OctetString.lpValue, col.pADsValues[0].OctetString.dwLength );
+				std::cout << " " <<  guid << std::endl;
+			}
+			pDSSearch->FreeColumn( &col );
+		}
+		
 		puts("------------------------------------------------");
+
 		dwCount++;
 	}
 	pDSSearch->CloseSearchHandle(hSearch);
