@@ -163,7 +163,7 @@ namespace ConsoleApplication1
                 }
 
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 //Facade.Instance.Trace("Oh no! Impersonate method failed.");
                 //ex.HandleException();
