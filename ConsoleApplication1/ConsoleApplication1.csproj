@@ -52,6 +52,7 @@
     <Compile Include="..\FolderService\FolderCreation.cs">
       <Link>FolderCreation.cs</Link>
     </Compile>
+    <Compile Include="Class1.cs" />
     <Compile Include="Impersonalisator.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
